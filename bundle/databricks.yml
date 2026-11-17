@@ -1,0 +1,50 @@
+# Declarative Automation Bundle for the Lakelink Fiber Network Scenario Twin.
+# Bundle root: bundle/ inside the Git folder skhage/network-scenario-twin (branch main).
+# Scaffolded by @devops under P0-BUNDLE-SCAFFOLD. Resources (pipeline, jobs, dashboard,
+# the single app "Lakelink Fiber Scenario Twin") are added under P5-BUNDLE-RESOURCES as
+# one YAML file per resource in bundle/resources/<name>.<resource_type>.yml.
+
+bundle:
+  name: network_scenario_twin
+
+include:
+  - resources/*.yml
+
+# Source code lives at the repo root (src/, pipeline/, dashboards/, apps/), one level
+# above this bundle root, so sync the repo root and leave docs and test plans out.
+sync:
+  paths:
+    - ..
+  exclude:
+    - ../resources/**
+    - ../tests/**
+    - ../bundle/**
+    - ../.assistant_instructions.md
+    - ../CONTRIBUTING.md
+    - ../README.md
+
+# Tagging mandate: every deployed job, pipeline, and other taggable resource carries
+# telco_project: network_scenario_twin.
+presets:
+  tags:
+    telco_project: network_scenario_twin
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for the twin (reuse the existing TMF catalog).
+    default: cdm_tmforum
+  schema:
+    description: Target schema for all twin tables, views, and metric views (decision D-001).
+    default: network_scenario_twin
+  warehouse_id:
+    description: SQL warehouse for the dashboard and SQL tasks (existing shared serverless warehouse).
+    lookup:
+      warehouse: serverless-compute
+
+targets:
+  dev:
+    default: true
+    mode: development
+    variables:
+      catalog: cdm_tmforum
+      schema: network_scenario_twin
