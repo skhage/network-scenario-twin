@@ -1,0 +1,63 @@
+{
+  "project": "network_scenario_twin",
+  "company": "Lakelink Fiber",
+  "status": "DRAFT generator config (P0-CORRIDOR-REFERENCE) - finalize in P1-GEN-REFERENCE after P0-DATA-CONTRACTS",
+  "target_table": "cdm_tmforum.network_scenario_twin.corridor",
+  "reference_file": "data/corridor_reference.csv",
+  "tags": {
+    "telco_project": "network_scenario_twin"
+  },
+  "row_count": 40,
+  "composition": {
+    "long_haul_extend": 25,
+    "metro_extend": 8,
+    "long_haul_generate_missing_pairs": ["ASH-CHI", "ASH-PHX", "DEN-SEA"],
+    "diverse_route_generate": ["ASH-ATL-D2", "CHI-DEN-D2", "DAL-PHX-D2", "DEN-SLC-D2"]
+  },
+  "lineage": {
+    "corridor_source": "cdm_tmforum.fiber_capital_intelligence.silver_corridor (canonical_corridor_key)",
+    "endpoint_fk_parent": "cdm_tmforum.fiber_capital_intelligence.geographic_site.geographic_site_id",
+    "endpoint_rule": "site_a/site_z = lowest-id active central_office per city; metro and diverse routes use lowest-id data_center (fallback: next site) as 2nd endpoint",
+    "origin_values": "MIXED = source row + twin attributes; SYNTHETIC = generated",
+    "simulation_run_id": "nst-sim-001"
+  },
+  "corridor_id_format": "<CITY_A>-<CITY_Z> alphabetical 3-letter codes (DEN,SLC,CHI,DAL,ASH,SEA,ATL,PHX); metro = <CITY>-MET; diverse = <base>-D2. Acceptance query 2 keys on corridor_id='DEN-SLC'.",
+  "capacity_gbps_rule": "long-haul fiber_count >=1500 -> 19200, >=600 -> 9600, else 4800; metro 4800; diverse 4800; DEN-SLC fixed 9600",
+  "window": {
+    "start": "2026-08-18",
+    "end": "2026-11-16"
+  },
+  "utilization": {
+    "non_anomaly_rule": "baseline = source avg_peak_util_pct*100 - 10 +/- 6, capped at 70; end = baseline + U(0,6); max non-DEN-SLC end util = 72.6 so DEN-SLC is the only corridor exhausting within 6 months",
+    "seed": 4471
+  },
+  "anomalies": {
+    "DEN-SLC_EXHAUSTION": {
+      "corridor_id": "DEN-SLC",
+      "name": "DEN-SLC RapidRoute",
+      "curve": "u(t)=55+30*ln(1+k*t)/ln(1+90k), t=days since 2026-08-18",
+      "k": 0.108783,
+      "u_2026_08_18": 55.0,
+      "u_2026_11_16": 85.0,
+      "exhaustion_threshold_pct": 95.0,
+      "target_exhaustion_date": "2027-03-16",
+      "days_after_2026_11_16": 120,
+      "note": "Concave AI-growth curve; extrapolating the same curve crosses 95% at t=210 (2027-03-16). Use as corridor-level 7-day mean target for telemetry_span_hourly on DEN-SLC spans and as the ground truth P3-FORECAST-MODEL should reproduce."
+    },
+    "SRLG-88_DIVERSE_PAIR": {
+      "primary_corridor": "CHI-DEN",
+      "diverse_corridor": "CHI-DEN-D2",
+      "spans": {
+        "S-4471": "CHI-DEN",
+        "S-4472": "CHI-DEN-D2"
+      },
+      "srlg": "SRLG-88",
+      "dual_path_customers": 12,
+      "note": "Recommendation for P1-GEN-TOPOLOGY: spans sold as diverse routes but share conduit SRLG-88."
+    }
+  },
+  "source_data_issues": [
+    "silver_corridor.total_distance_km is a sum of segment lengths for many long-haul keys (e.g. Dallas-Phoenix 35543 km). Rule: long-haul distance_km = great-circle(endpoint sites) x 1.25 route factor (x1.12 more for diverse -D2 routes); source value retained in source_distance_km. Metro rings keep source distance.",
+    "geographic_site.site_name uses 'LakeLink' casing; twin display names use 'Lakelink Fiber'"
+  ]
+}

@@ -1,0 +1,41 @@
+corridor_id,corridor_name,route_type,site_a_id,site_z_id,distance_km,fiber_count,capacity_gbps,baseline_util_pct,source_table,source_id,origin,diverse_of,end_util_pct,injected_anomaly,source_distance_km
+ASH-ATL,Lakelink Fiber Ashburn-Atlanta Long-Haul,long_haul,100045,100101,1061.51,288,4800,54.3,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Ashburn-Atlanta,MIXED,,54.4,,1704.4
+ASH-ATL-D2,Lakelink Fiber Ashburn-Atlanta Diverse Long-Haul,long_haul,100041,100104,1188.89,288,4800,41.9,,,SYNTHETIC,ASH-ATL,42.8,,
+ASH-CHI,Lakelink Fiber Ashburn-Chicago Long-Haul,long_haul,100045,100081,1139.13,432,4800,38.0,,,SYNTHETIC,,38.4,,
+ASH-DAL,Lakelink Fiber Ashburn-Dallas Long-Haul,long_haul,100045,100011,2333.78,432,4800,46.0,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Ashburn-Dallas,MIXED,,48.5,,1875.87
+ASH-DEN,Lakelink Fiber Ashburn-Denver Long-Haul,long_haul,100045,100111,2939.7,1296,9600,50.2,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Ashburn-Denver,MIXED,,55.5,,4716.74
+ASH-PHX,Lakelink Fiber Ashburn-Phoenix Long-Haul,long_haul,100045,100001,3929.06,432,4800,40.4,,,SYNTHETIC,,41.9,,
+ASH-SEA,Lakelink Fiber Ashburn-Seattle Long-Haul,long_haul,100045,100128,4616.68,720,9600,49.5,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Ashburn-Seattle,MIXED,,53.0,,3695.71
+ASH-SLC,Lakelink Fiber Ashburn-Salt Lake City Long-Haul,long_haul,100045,100161,3652.96,1152,9600,45.8,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Ashburn-Salt Lake City,MIXED,,51.6,,2921.8
+ATL-CHI,Lakelink Fiber Atlanta-Chicago Long-Haul,long_haul,100101,100081,1184.46,1296,9600,44.9,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Atlanta-Chicago,MIXED,,45.1,,953.12
+ATL-DAL,Lakelink Fiber Atlanta-Dallas Long-Haul,long_haul,100101,100011,1448.72,1008,9600,52.6,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Atlanta-Dallas,MIXED,,53.4,,1738.19
+ATL-DEN,Lakelink Fiber Atlanta-Denver Long-Haul,long_haul,100101,100111,2435.93,1728,19200,52.8,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Atlanta-Denver,MIXED,,55.5,,2922.74
+ATL-PHX,Lakelink Fiber Atlanta-Phoenix Long-Haul,long_haul,100101,100001,3200.0,720,9600,48.1,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Atlanta-Phoenix,MIXED,,51.7,,2557.38
+ATL-SEA,Lakelink Fiber Atlanta-Seattle Long-Haul,long_haul,100101,100128,4385.18,1584,19200,53.5,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Atlanta-Seattle,MIXED,,55.6,,7011.96
+ATL-SLC,Lakelink Fiber Atlanta-Salt Lake City Long-Haul,long_haul,100101,100161,3185.51,864,9600,56.1,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Atlanta-Salt Lake City,MIXED,,56.6,,2548.56
+CHI-DAL,Lakelink Fiber Chicago-Dallas Long-Haul,long_haul,100081,100011,1622.22,2016,19200,47.0,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Chicago-Dallas,MIXED,,49.2,,1943.3
+CHI-DEN,Lakelink Fiber Chicago-Denver Long-Haul,long_haul,100081,100111,1844.88,2592,19200,55.8,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Chicago-Denver,MIXED,,57.4,SRLG-88_DIVERSE_PAIR,3703.66
+CHI-DEN-D2,Lakelink Fiber Chicago-Denver Diverse Long-Haul,long_haul,100085,100120,2066.27,288,4800,40.5,,,SYNTHETIC,CHI-DEN,45.8,SRLG-88_DIVERSE_PAIR,
+CHI-PHX,Lakelink Fiber Chicago-Phoenix Long-Haul,long_haul,100081,100001,2923.08,4176,19200,49.3,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Chicago-Phoenix,MIXED,,52.1,,7016.97
+CHI-SEA,Lakelink Fiber Chicago-Seattle Long-Haul,long_haul,100081,100128,3486.73,144,4800,49.3,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Chicago-Seattle,MIXED,,51.5,,2783.52
+CHI-SLC,Lakelink Fiber Chicago-Salt Lake City Long-Haul,long_haul,100081,100161,2531.85,864,9600,49.7,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Chicago-Salt Lake City,MIXED,,51.9,,2021.25
+DAL-DEN,Lakelink Fiber Dallas-Denver Long-Haul,long_haul,100011,100111,1341.05,2592,19200,50.3,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Dallas-Denver,MIXED,,53.9,,2141.78
+DAL-PHX,Lakelink Fiber Dallas-Phoenix Long-Haul,long_haul,100011,100001,1783.94,11664,19200,70.0,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Dallas-Phoenix,MIXED,,72.6,,35543.01
+DAL-PHX-D2,Lakelink Fiber Dallas-Phoenix Diverse Long-Haul,long_haul,100012,100009,1998.01,288,4800,34.5,,,SYNTHETIC,DAL-PHX,37.0,,
+DAL-SEA,Lakelink Fiber Dallas-Seattle Long-Haul,long_haul,100011,100128,3387.68,1296,9600,53.0,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Dallas-Seattle,MIXED,,55.0,,5408.77
+DAL-SLC,Lakelink Fiber Dallas-Salt Lake City Long-Haul,long_haul,100011,100161,2019.38,720,9600,55.4,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Dallas-Salt Lake City,MIXED,,59.5,,1608.94
+DEN-PHX,Lakelink Fiber Denver-Phoenix Long-Haul,long_haul,100111,100001,1184.87,1728,19200,53.8,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Denver-Phoenix,MIXED,,59.6,,942.85
+DEN-SEA,Lakelink Fiber Denver-Seattle Long-Haul,long_haul,100111,100128,2051.72,432,4800,41.4,,,SYNTHETIC,,43.8,,
+DEN-SLC,DEN-SLC RapidRoute,long_haul,100111,100161,749.61,864,9600,55.0,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Denver-Salt Lake City,MIXED,,85.0,DEN-SLC_EXHAUSTION,595.79
+DEN-SLC-D2,DEN-SLC RapidRoute Diverse,long_haul,100120,100165,839.56,288,4800,43.8,,,SYNTHETIC,DEN-SLC,47.7,,
+PHX-SEA,Lakelink Fiber Phoenix-Seattle Long-Haul,long_haul,100001,100128,2247.91,2016,19200,46.7,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Phoenix-Seattle,MIXED,,46.9,,2691.53
+PHX-SLC,Lakelink Fiber Phoenix-Salt Lake City Long-Haul,long_haul,100001,100161,1022.1,288,4800,50.8,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Phoenix-Salt Lake City,MIXED,,55.4,,820.5
+SEA-SLC,Lakelink Fiber Seattle-Salt Lake City Long-Haul,long_haul,100128,100161,1406.6,144,4800,49.0,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Salt Lake City-Seattle,MIXED,,52.2,,1128.57
+ASH-MET,Lakelink Fiber Ashburn Metro Ring,metro,100045,100041,264.36,15408,4800,26.6,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Ashburn,MIXED,,31.4,,264.36
+ATL-MET,Lakelink Fiber Atlanta Metro Ring,metro,100101,100104,520.86,38160,4800,39.5,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Atlanta,MIXED,,44.7,,520.86
+CHI-MET,Lakelink Fiber Chicago Metro Ring,metro,100081,100085,380.78,34416,4800,28.7,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Chicago,MIXED,,29.2,,380.78
+DAL-MET,Lakelink Fiber Dallas Metro Ring,metro,100011,100012,590.92,32256,4800,47.1,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Dallas,MIXED,,53.0,,590.92
+DEN-MET,Lakelink Fiber Denver Metro Ring,metro,100111,100120,418.4,25776,4800,35.7,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Denver,MIXED,,39.3,,418.4
+PHX-MET,Lakelink Fiber Phoenix Metro Ring,metro,100001,100009,395.91,30816,4800,49.5,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Phoenix,MIXED,,53.2,,395.91
+SEA-MET,Lakelink Fiber Seattle Metro Ring,metro,100128,100124,244.11,20880,4800,41.6,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Seattle,MIXED,,42.5,,244.11
+SLC-MET,Lakelink Fiber Salt Lake City Metro Ring,metro,100161,100165,309.98,20160,4800,54.7,cdm_tmforum.fiber_capital_intelligence.silver_corridor,Salt Lake City,MIXED,,56.0,,309.98

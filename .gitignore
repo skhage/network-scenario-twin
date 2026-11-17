@@ -221,3 +221,28 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Databricks / Declarative Automation Bundles (Network Scenario Twin - @devops P0-REPO-HYGIENE)
+.databricks/
+bundle/.databricks/
+.bundle/
+*.dbc
+.databrickscfg
+
+# Node / React app build output (Lakelink Fiber Scenario Twin app)
+node_modules/
+apps/**/node_modules/
+apps/**/dist/
+apps/**/.vite/
+
+# Local scratch and OS noise
+.DS_Store
+*.tmp
+scratch/
+tmp/
+
+# Never commit credentials or tokens
+*.pem
+*.key
+*.token
+
