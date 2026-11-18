@@ -1,4 +1,4 @@
-# Lakelink Fiber Network Scenario Twin: Data Contracts v1.0
+# Lakelink Fiber Network Scenario Twin: Data Contracts v1.1
 
 > Owner: @data-planner (P0-DATA-CONTRACTS, 2026-11-17). Tag: `telco_project: network_scenario_twin`.
 > Binding for P1-GEN-*, P2-SDP-*, P3-* and the app. Changes go through @data-planner; record them in the changelog at the end of this file.
@@ -145,13 +145,16 @@ Composition: 25 long-haul + 8 metro EXTEND; 3 GENERATE missing pairs (ASH-CHI, A
 ### 2.7 service_level_agreement (1,500, 1:1 with service)
 | Column | Type | Semantics |
 | --- | --- | --- |
-| sla_id | LONG PK | = `tmf_customer.service_level_agreement.service_level_agreement_id`. Prefer an SLA whose `customer_id` equals the twin customer (all 1,276 pool customers have at least one SLA, verified) |
+| sla_id | LONG PK | = `tmf_customer.service_level_agreement.service_level_agreement_id` (every value must exist in the parent; UNIQUE). First assign the SLAs whose source `customer_id` equals the twin customer. The 120 twin customers own only 1,226 source SLAs, so the remaining 274 services reuse other, unused source SLA ids (amended v1.1) |
 | service_id | LONG FK UNIQUE | -> service.service_id |
-| customer_id | LONG FK | -> customer.customer_id; = service.customer_id |
-| latency_target_ms | DOUBLE | From the source `latency_threshold_milliseconds` (STRING; cast it, and generate within 5-60 if it is unparsable) |
-| availability_target_pct | DOUBLE | 99.9 / 99.99 / 99.999 |
-| credit_pct | DOUBLE | From the source `penalty_cap_percentage` (0-100). Must be > 0 for all 12 Dual Path customers' services |
-| lineage cols | | origin MIXED |
+| customer_id | LONG FK | -> customer.customer_id; = service.customer_id (twin assignment, which may differ from the source owner) |
+| source_customer_id | LONG | Lineage only (added v1.1): `customer_id` of the source SLA row. Equals `customer_id` for 1,226 rows and differs for 274. Not an FK, and not for joins or reporting |
+| latency_target_ms | DOUBLE | GENERATED (amended v1.1): the source `latency_threshold_milliseconds` is an unparsable alphanumeric code for all 1,226 twin-customer rows (for example `61477T7E6I80`). Value is uniform 5-60 ms, seed 4471. Use `try_cast` if a later source refresh has numeric values; generate only when the cast is null |
+| availability_target_pct | DOUBLE | 99.9 / 99.99 / 99.999 (unprotected / protected / dual_path) |
+| credit_pct | DOUBLE | 0-100 scale, > 0 (amended v1.1). The source `penalty_cap_percentage` is NOT on a 0-100 scale: it ranges 134.56-99,957.01 for the twin customers, and 0 rows fall in 0-100. Rule: `credit_pct = source value` if it is between 0 and 100, otherwise `5 + pmod(source value, 20)`, which gives 5.00-24.99. Must be > 0 for all 12 Dual Path customers' services |
+| lineage cols | | origin MIXED; `source_table` = `cdm_tmforum.tmf_customer.service_level_agreement`, `source_id` = sla_id as a string |
+
+**v1.1 verification (2026-11-18, @data-planner):** 1,500 rows, 1,500 distinct sla_id and service_id. 0 orphan sla_id against the parent. 0 rows where source_customer_id differs from the parent's customer_id. 0 service FK or customer mismatches. 0 rows deviate from the credit rule; range 5.00-24.99. latency 5.1-60.0. All 12 Dual Path customers have a dual_path SLA with credit_pct > 0. Tags and table/column comments are present.
 
 ### 2.8 telemetry_span_hourly (600 x 24 x 90 = 1,296,000)
 | Column | Type | Semantics |
@@ -257,4 +260,5 @@ Policy intent: planners and the app service principal read everything. Other pri
 9. Every table and column has a comment and the `telco_project` tag.
 
 ## Changelog
+* v1.1 2026-11-18 @data-planner (P1-CONTRACT-SLA-AMEND): section 2.7 amended to match the verified source. credit_pct uses the mapping 5 + pmod(penalty_cap_percentage, 20) when the source is outside 0-100. latency_target_ms is generated (5-60, seed 4471) because the source is unparsable. 274 SLAs reuse other source SLA ids. Added the lineage-only column source_customer_id. Ratified the generator's output as built; no regeneration needed.
 * v1.0 2026-11-17 @data-planner: initial contract. Ratified the corridor config (distance rule, keys, 40 rows), the ml-engineer sim schemas (arrays changed to LONG; champion-only forecast), and the acceptance query 1 shape. Single generator notebook at src/gen/.

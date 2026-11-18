@@ -138,7 +138,17 @@ Three story cards, one per wow moment. Each card shows its headline metric (Dual
 * **Acceptance link:** this view reproduces section 11.5 query 3.
 
 ### 3.4 Required states (every view)
-Loading uses skeletons. Empty means "no simulated result for this resource yet", not zero. Error shows a retry and the route name. Stale shows a banner when as_of is more than 24 hours old.
+Authoritative spec: `resources/brand_guide.md` section 9. Summary:
+
+| State | Treatment |
+| --- | --- |
+| Loading | Skeletons matching the final layout; no spinner-only pages. Shimmer disabled under `prefers-reduced-motion`. |
+| Empty | Icon + text "No simulated result for <id> yet" + a next action (for example "Pick another resource" or "Ask the copilot"). Never render 0 as a fact. |
+| Error | Text error with the route name and a Retry button. No raw stack traces, SQL, or server error bodies in the UI. Invalid input (HTTP 400) renders as text, for example "Resource ID must look like S-4471". |
+| Stale | Banner "Twin data is older than 24 hours (as of <ts>)" when as_of is more than 24 hours old. |
+| Copilot unavailable | Drawer shows "Copilot not yet available"; the Genie fallback is labelled "Genie mode". |
+
+Loading, stale, and error banners are announced through an `aria-live` region.
 
 ---
 
@@ -162,25 +172,23 @@ Until the copilot endpoint is READY, the drawer uses the AppKit `genie` plugin a
 
 ## 5. Brand and accessibility (binding @designer authority)
 
-Provisional tokens until `resources/brand_guide.md` (P0-BRAND-GUIDE) is published. The brand guide supersedes these values.
+**Tokens: see `resources/brand_guide.md` v1.0 (authoritative).** The app theme implements the core palette (s2.1) and the mandatory accessible derived tokens (s2.2), status semantics (s3), chart rules (s4.2), typography (s5), and breakpoints (s6) exactly as written there. This document does not restate token values, so it cannot drift from the guide. Note in particular that `--lf-primary-strong`, `--lf-green-strong`, `--lf-ink-secondary`, and `--lf-input-border` are required wherever red, green, secondary text, or input borders appear; #FF3621 and #00A972 are not used for normal-size text. Implementation is tracked in P5-APP-BRAND-TOKENS.
 
-| Token | Value |
-| --- | --- |
-| `--lf-primary` | #FF3621 |
-| `--lf-navy` | #1B3139 |
-| `--lf-green` | #00A972 |
-| `--lf-surface` | #F9F7F4 |
-| Data viz order | #FF3621, #1B3139, #00A972, #6E8898, #FF8C69 |
-| Type | Inter, system sans-serif fallback |
-| Icons | Lucide, 1.5px stroke |
-| Spacing | 8px grid |
+Accessibility requirements (WCAG 2.1 AA; full binding checklist in `resources/brand_guide.md` s8):
 
-Accessibility requirements:
+* Contrast per brand_guide s2.3: text 4.5:1 (large 3:1), UI components and meaningful graphics 3:1.
+* Skip-to-content link as the first focusable element.
+* Landmarks: `header`, `nav`, `main`, and `aside` (copilot drawer).
+* Exactly one `h1` per view.
+* Page `<title>` is "<View> | Lakelink Fiber Scenario Twin"; `<html lang="en">`.
+* Full keyboard path through every control; visible focus (2px #FF3621 outline + 2px offset on light, 2px white on navy). Esc closes the copilot drawer and returns focus to the toggle.
+* ARIA live region (`aria-live="polite"`) for streamed copilot output and state banners.
+* Status is never conveyed by color alone (DOWN/DEGRADED carry text and an icon, brand_guide s3).
+* `prefers-reduced-motion` respected: no countdown ticking, no skeleton shimmer.
+* Responsive at 1280, 1024, and 768 px (demo-laptop priority), with content reflow at 320 px.
+* Every chart has a table alternative and a one-sentence text summary.
 
-* WCAG 2.1 AA: text contrast at least 4.5:1. #FF3621 on #F9F7F4 is used only for large text and icons, or with navy text.
-* Keyboard navigation through every control, visible focus rings, and ARIA live region for streamed copilot output.
-* Status is never conveyed by color alone (DOWN/DEGRADED carry text and an icon).
-* Responsive at 1280, 1024, and 768 px, which is the demo-laptop priority.
+Shell-level items are tracked in P5-APP-A11Y-SHELL; view-level items in P5-APP-WOW-VIEW-UX-SPEC.
 
 Every @designer finding filed against the app is binding and is tracked as an `@app-developer` task. UX review is requested through P5-UX-REVIEW once P5-APP-WOW-VIEWS lands.
 
