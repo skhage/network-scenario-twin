@@ -136,6 +136,33 @@ The result is 500 rows. Planned maintenance windows (`maintenance_window`) are a
 | Row count | 500 rows, unique sim_id, unique resource_id |
 | Determinism | Two runs with the same seed produce identical output (hash compare) |
 
+### 3.7 Ground truth for S-4471 (P3-BLAST-RADIUS-GROUND-TRUTH, 2026-11-19)
+
+Computed by ad-hoc SQL over the generated tables (run `nst-sim-001`), with the section 3.2 semantics: the failure set is S-4471 plus every span in its SRLG; a logical resource fails if its `span_id` is in that set (verified that `span_id` is identical down the port -> wavelength -> OCh chain, 0 mismatches); only `status = 'active'` services count; `sla_exposure_mrr = SUM(mrr * credit_pct / 100)` over DOWN services (data_contracts.md s2.13). P3-BLAST-RADIUS and P3-QA-VALIDATION must match these values exactly.
+
+* **Failure set:** `[S-4471, S-4472]` (SRLG-88, conduit CDT-BB-0017). No other span has SRLG-88.
+* **DOWN services:** 12, all `dual_path`, active. **DEGRADED:** 0. No unprotected or protected service rides S-4471 or S-4472, and no pending or disconnected service touches them.
+* **`dual_path_both_failed_customer_ids` (12, sorted):** `[10384, 10897, 12930, 12992, 13642, 14513, 14870, 17014, 17041, 17747, 18793, 19982]`. This is exactly the set with `customer.dual_path_flag = TRUE` (set difference 0 both ways).
+* **`affected_service_ids` (12, sorted):** `[19313, 31061, 32479, 37127, 70755, 87059, 94167, 95982, 100034, 100830, 103477, 107506]`.
+* **Total MRR on DOWN services:** 538,687.72. **Total `sla_exposure_mrr`:** **75,472.41** (the sum of the per-customer values rounded to 2 dp is 75,472.40; compare the unrounded total).
+* **Symmetry:** failing S-4472 gives the same 12 customers and 75,472.41.
+* **Counterfactual `path_only_v1` (SRLG-blind) on S-4471:** 0 DOWN, 12 DEGRADED, `degraded_mrr` 538,687.72, exposure 0. The SRLG-aware model therefore surfaces 75,472.41/month of SLA exposure that an inventory-only diversity check misses.
+
+| customer_id | service_id | segment | mrr | sla_exposure_mrr |
+| --- | --- | --- | --- | --- |
+| 10384 | 103477 | enterprise | 46,439.72 | 3,543.35 |
+| 10897 | 70755 | enterprise | 90,098.79 | 7,370.08 |
+| 12930 | 32479 | enterprise | 84,551.01 | 10,027.75 |
+| 12992 | 94167 | enterprise | 43,045.37 | 7,399.50 |
+| 13642 | 107506 | enterprise | 7,773.42 | 779.67 |
+| 14513 | 87059 | smb | 46,769.26 | 9,466.10 |
+| 14870 | 100034 | enterprise | 691.05 | 103.86 |
+| 17014 | 19313 | enterprise | 56,160.89 | 7,458.17 |
+| 17041 | 95982 | wholesale | 81,183.89 | 16,667.05 |
+| 17747 | 37127 | enterprise | 2,887.34 | 322.80 |
+| 18793 | 31061 | enterprise | 12,306.17 | 974.65 |
+| 19982 | 100830 | wholesale | 66,780.81 | 11,359.42 |
+
 ---
 
 ## 4. Telemetry anomaly detection (P3-ANOMALY-DETECT)
@@ -212,4 +239,4 @@ Notebook budget (2-for-1 consolidation rule): no more than 3 notebooks under `sr
 ## 10. Open items
 1. Acceptance query 1 row shape (section 3.5). Owner: @data-planner in P0-DATA-CONTRACTS.
 2. Gold `corridor_utilization_daily` columns and `corridor.source_id`. Owner: @data-engineer in P3-DE-FEATURE-INPUTS.
-3. `customer` must carry a Dual Path flag, and `service` must carry working/protect path references (span lists), for section 3. Owner: @data-engineer in P1-GEN-SERVICE (note appended).
+3. `customer` must carry a Dual Path flag, and `service` must carry working/protect path references (span lists), for section 3. Owner: @data-engineer in P1-GEN-SERVICE. RESOLVED 2026-11-19: `customer.dual_path_flag` and `service.primary_/protect_logical_resource_id` -> `logical_resource.span_id` are present and verified in section 3.7.
