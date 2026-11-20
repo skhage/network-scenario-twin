@@ -235,6 +235,10 @@ apps/**/node_modules/
 apps/**/dist/
 apps/**/.vite/
 
+# MLflow experiments created inside the Git folder are workspace objects, not Git-supported files
+# (they block pull/commit). Tracked in asset_ledger instead. (@devops 2026-11-20)
+experiments/
+
 # Local scratch and OS noise
 .DS_Store
 *.tmp

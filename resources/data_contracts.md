@@ -103,7 +103,7 @@ Under a single-value FK, every non-null value must exist in the parent. Profilin
 | corridor_name | STRING | Lakelink Fiber names. `DEN-SLC` = `DEN-SLC RapidRoute` |
 | route_type | STRING | `long_haul` / `metro` |
 | site_a_id, site_z_id | INT FK | -> `fiber_capital_intelligence.geographic_site.geographic_site_id` (all 80 verified by @data-engineer in P0-CORRIDOR-REFERENCE) |
-| distance_km | DOUBLE | **Long-haul: great-circle(site_a, site_z) x 1.25; diverse -D2 routes x 1.12 on top of that; metro: source value.** |
+| distance_km | DOUBLE | **Long-haul: great-circle(site_a, site_z) x 1.25; diverse -D2 routes x 1.12 on top of that; metro ring: round(source_distance_km x 0.2, 2), which must fall in 40-120 km (P1-CORRIDOR-REF-FIXES, 2026-11-20).** Endpoint rule: both endpoints must be `active` sites. SEA-MET site_z_id was re-keyed from 100124 (data center, planned) to 100126 (Seattle Cable Landing 6, active, carrier-neutral). This is the documented exception: the only active Seattle data_center/central_office is 100128, which is already site_a. |
 | source_distance_km | DOUBLE nullable | Raw `silver_corridor.total_distance_km`. This is a sum of segment lengths, NOT a route length (e.g. Dallas-Phoenix 35,543 km), so never use it for analysis |
 | fiber_count | INT | |
 | capacity_gbps | DOUBLE | Rule in corridor_generator_config.json; DEN-SLC = 9,600 |
