@@ -1,4 +1,4 @@
-# Lakelink Fiber Network Scenario Twin: Data Contracts v1.1
+# Lakelink Fiber Network Scenario Twin: Data Contracts v1.2
 
 > Owner: @data-planner (P0-DATA-CONTRACTS, 2026-11-17). Tag: `telco_project: network_scenario_twin`.
 > Binding for P1-GEN-*, P2-SDP-*, P3-* and the app. Changes go through @data-planner; record them in the changelog at the end of this file.
@@ -239,14 +239,30 @@ Columns: `forecast_id, corridor_id FK -> corridor, month DATE, forecast_utilizat
 | corridor_utilization_daily | corridor_id x date | avg/p95 utilization_pct from telemetry; DEN-SLC curve visible |
 | sla_exposure_by_span | span_id | services, Dual Path customers, sum of mrr x credit_pct exposed if the span fails (SRLG-expanded) |
 
-## 4. ABAC tag design (proposal; apply after policy check)
+## 4. ABAC tag design (RATIFIED v1.2, P1-ABAC-KEY-RATIFY, 2026-11-21)
 | Tag key | Values | Applied to | Status |
 | --- | --- | --- | --- |
-| `telco_project` | `network_scenario_twin` | every table, view, metric view, function, model | Value allowed (verified in P0-SCHEMA-SETUP) |
-| `domain` | `operations` | every table | Verified on the schema |
-| `data_sensitivity` (proposed) | `internal`, `confidential` | customer, service, service_level_agreement, sim_failure_result = confidential; everything else = internal | NOT verified: @data-engineer checks the policy and allowed values before applying |
-| column tag `class.name` (system) | | `customer.name` | Use for a masking policy on non-planner groups |
-Policy intent: planners and the app service principal read everything. Other principals see `customer.name` masked and `mrr` / `sla_exposure_mrr` only through the metric views.
+| `telco_project` | `network_scenario_twin` | every table, view, metric view, function, model | **Value NOT in the governed policy** (2026-11-21: 43 allowed values, network_scenario_twin absent). 9 of 17 objects carry it (applied before the value was lost); 8 do not. CEO must add the value; P1-TAG-REAPPLY then tags the rest |
+| `domain` | `operations` | every table and metric view | 14 of 17 tagged; dq_customer_candidate_pool, sim_failure_result, v_sim_failure_customer_impact missing |
+| **`telco_sensitivity`** (existing governed policy; replaces the proposed `data_sensitivity`, whose only values are official / official_sensitive) | `internal`, `confidential`, `restricted` | Table level: see the classification below. `restricted` is reserved; not used in v1 | Ratified |
+| column tag `class.name` (system) | | `customer.name`, `customer.source_name_code`, `dq_customer_candidate_pool.source_name_code` | Drives the name-mask policy |
+
+**Classification rule:** an object is `confidential` if it holds customer-level rows (a customer_id with name, money, or a source-system link). Aggregates without a customer key are `internal`.
+
+| telco_sensitivity | Objects |
+| --- | --- |
+| confidential (6) | customer, service, service_level_agreement, sim_failure_result, **v_sim_failure_customer_impact** (per-customer sla_exposure_mrr), **dq_customer_candidate_pool** (bridge from twin customer_id to `tmf_customer.customer` and its source name code) |
+| internal (11) | resource_specification, physical_resource, logical_resource, corridor, telemetry_span_hourly, alarm, trouble_ticket, maintenance_window, copper_wire_center, mv_copper_readiness, **mv_sla_exposure** (span grain, no customer key) |
+
+New objects (P2 gold tables, P3 outputs) get a class at creation by the same rule. twin_current_state, corridor_utilization_daily, and sla_exposure_by_span are `internal` unless they gain a customer key.
+
+**Access and masking design (binding).** UC evaluates ABAC policies on base tables against the *querying* user, even through views and metric views. A money mask on `service.mrr` would therefore also null the metric views for non-planners. So money is controlled by **grants**, and names by a **mask**:
+1. Principals: account group `lakelink_nst_planners` (planners and agents) and the app service principal of `lakelink-scenario-twin` (when P5 creates it) read everything. Account group `lakelink_nst_viewers` is everyone else on the demo, including Genie space users.
+2. Grants: planners get `USE SCHEMA` + `SELECT` on the schema. Viewers get `USE SCHEMA` and `SELECT` only on `internal` objects (including both metric views). They get no SELECT on `confidential` objects. Metric views run with owner access to base tables, so viewers see mrr / sla_exposure_mrr only as metric-view aggregates.
+3. Mask function: `cdm_tmforum.network_scenario_twin.nst_mask_name(v STRING) RETURNS STRING`, which returns `concat('Lakelink Customer ', substr(sha2(v, 256), 1, 8))` (deterministic and joinable; it never returns the source value).
+4. ABAC policy `nst_mask_customer_name` ON SCHEMA `cdm_tmforum.network_scenario_twin`: COLUMN MASK `nst_mask_name` TO `account users` EXCEPT `lakelink_nst_planners`, the app SP; FOR TABLES MATCH COLUMNS `has_tag('class.name')`. Defense in depth for any future grant of a confidential table.
+5. No row-filter policy in v1. Do not add a column-mask policy on money columns (it would break the metric views; see above).
+6. Prerequisite: neither group exists today (2026-11-21; only `lakelink_sox_finance` matches). Creating them needs an account admin (CEO). Until then, create the function and tags but do not create the policy.
 
 ## 5. Contract checks (for P1-PROFILE / P1-QA-ANOMALIES)
 1. Row counts equal section 1 (telemetry exactly 1,296,000).
@@ -260,5 +276,6 @@ Policy intent: planners and the app service principal read everything. Other pri
 9. Every table and column has a comment and the `telco_project` tag.
 
 ## Changelog
+* v1.2 2026-11-21 @data-planner (P1-ABAC-KEY-RATIFY): section 4 ratified. The key is `telco_sensitivity` (the existing governed policy), not `data_sensitivity`. v_sim_failure_customer_impact and dq_customer_candidate_pool are now confidential, and mv_sla_exposure (untagged) is internal. `class.name` is extended to both source_name_code columns. Access design: grants control money, an ABAC mask controls names. Base-table money masks are ruled out because policies follow the querier through metric views. Recorded the telco_project policy gap (value absent) and the missing `domain` tags.
 * v1.1 2026-11-18 @data-planner (P1-CONTRACT-SLA-AMEND): section 2.7 amended to match the verified source. credit_pct uses the mapping 5 + pmod(penalty_cap_percentage, 20) when the source is outside 0-100. latency_target_ms is generated (5-60, seed 4471) because the source is unparsable. 274 SLAs reuse other source SLA ids. Added the lineage-only column source_customer_id. Ratified the generator's output as built; no regeneration needed.
 * v1.0 2026-11-17 @data-planner: initial contract. Ratified the corridor config (distance rule, keys, 40 rows), the ml-engineer sim schemas (arrays changed to LONG; champion-only forecast), and the acceptance query 1 shape. Single generator notebook at src/gen/.
