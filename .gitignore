@@ -238,6 +238,9 @@ apps/**/.vite/
 # MLflow experiments created inside the Git folder are workspace objects, not Git-supported files
 # (they block pull/commit). Tracked in asset_ledger instead. (@devops 2026-11-20)
 experiments/
+# Genie spaces stored in the Git folder are workspace objects, not Git-supported files
+# (they block pull/commit). Tracked in asset_ledger instead. (@devops 2026-11-23)
+*.geniespace.json
 
 # Local scratch and OS noise
 .DS_Store
