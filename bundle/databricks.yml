@@ -22,6 +22,7 @@ sync:
     - ../.assistant_instructions.md
     - ../CONTRIBUTING.md
     - ../README.md
+    - ../experiments/**
 
 # Tagging mandate: every deployed job, pipeline, and other taggable resource carries
 # telco_project: network_scenario_twin.

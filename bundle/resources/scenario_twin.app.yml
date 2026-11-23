@@ -1,0 +1,20 @@
+# The ONE Databricks App for the project: "Lakelink Fiber Scenario Twin" (D-004, D-006).
+# The name is pinned to the existing app lakelink-scenario-twin and NOT namespaced per developer:
+# a namespaced name would create a second app on deploy, which D-004 forbids. Bind before the
+# first deploy so the bundle manages the existing app:
+#   databricks bundle deployment bind scenario_twin_app lakelink-scenario-twin --target dev
+# Env vars live in ../../apps/lakelink-scenario-twin/app.yaml. Owner: @devops (P5-BUNDLE-RESOURCES).
+# Tag: telco_project: network_scenario_twin is applied through the app budget policy (P5-APP-TAG-POLICY).
+resources:
+  apps:
+    scenario_twin_app:
+      name: lakelink-scenario-twin
+      description: Lakelink Fiber Scenario Twin - blast radius, corridor exhaustion, and copper sequencing over Lakebase twin state.
+      source_code_path: ../../apps/lakelink-scenario-twin
+      resources:
+        - name: twin-state
+          description: Lakebase nst_twin_state (schema twin_app) read-only twin state
+          postgres:
+            branch: projects/telco-network-scenario-twin-project/branches/production
+            database: projects/telco-network-scenario-twin-project/branches/production/databases/db-176z-a5pjrynrbn
+            permission: CAN_CONNECT_AND_CREATE

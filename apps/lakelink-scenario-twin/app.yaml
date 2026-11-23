@@ -1,0 +1,11 @@
+# Lakelink Fiber Scenario Twin (lakelink-scenario-twin) - the ONE app for network_scenario_twin (D-004/D-006)
+# Tag: telco_project: network_scenario_twin
+command: ['npm', 'run', 'start']
+env:
+  # Lakebase twin-state database resource (key: twin-state) injects PGHOST/PGDATABASE/PGUSER/PGPORT/PGSSLMODE.
+  - name: TWIN_SCHEMA
+    value: twin_app
+  - name: COPILOT_ENDPOINT
+    value: ''
+  - name: STALE_HOURS
+    value: '24'

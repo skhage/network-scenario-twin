@@ -16,6 +16,10 @@ from pyspark import pipelines as dp
 PROPS = {"quality": "gold", "telco_project": "network_scenario_twin", "contract": "data_contracts.md v1.2 s3"}
 ANCHOR_DATE = "2026-11-16"  # D-002 demo anchor
 K_REF = 0.108783            # model_design.md s1 AI growth regressor constant
+# P2-GOLD-ALARM-STALENESS (rule from P2-DQ-RULES): an open alarm (cleared_ts NULL) raised more than 7 days
+# before the DQ anchor 2026-11-17 00:00 is stale and excluded from open_*_alarm_count and health_state.
+# 7 days is ~1.7x the max observed clear duration (4.16 days). Raw bronze/alarm rows are left unchanged.
+STALE_CUTOFF_TS = "2026-11-10 00:00:00"  # = anchor 2026-11-17 00:00 - 7 days (matches dq_gold_checks)
 AI_SIGNAL_TABLE = "cdm_tmforum.fiber_capital_intelligence.corridor_demand_forecast"  # REUSE (model_design s0)
 
 PROVENANCE_DDL = """,
@@ -133,14 +137,14 @@ def corridor_utilization_daily():
   util_24h_mean_pct DOUBLE COMMENT 'Spans only: mean utilization over the last 24 telemetry hours.',
   latency_ms DOUBLE COMMENT 'Spans only: latency in ms at the latest telemetry hour.',
   optical_margin_db DOUBLE COMMENT 'Spans only: optical margin in dB at the latest telemetry hour (lower is worse).',
-  open_alarm_count INT COMMENT 'Open (uncleared) alarms on the resource; logical resources count alarms on their span.',
-  open_critical_alarm_count INT COMMENT 'Open alarms with severity critical (same scope as open_alarm_count).',
-  open_major_alarm_count INT COMMENT 'Open alarms with severity major (same scope as open_alarm_count).',
+  open_alarm_count INT COMMENT 'Open non-stale alarms on the resource (cleared_ts NULL and raised on or after 2026-11-10 00:00, i.e. within 7 days of the 2026-11-17 anchor; older uncleared alarms are treated as stale). Logical resources count alarms on their span.',
+  open_critical_alarm_count INT COMMENT 'Open non-stale alarms with severity critical (same scope and 7-day staleness rule as open_alarm_count).',
+  open_major_alarm_count INT COMMENT 'Open non-stale alarms with severity major (same scope and 7-day staleness rule as open_alarm_count).',
   last_alarm_ts TIMESTAMP COMMENT 'Most recent alarm raise time in scope (open or cleared).',
   active_service_count INT COMMENT 'Active services whose primary or protect path uses the resource (span or logical id). Null for nodes and sites (not path members).',
   next_maintenance_window_id STRING COMMENT 'Earliest scheduled maintenance window (FK maintenance_window.window_id) on the span on or after 2026-11-16.',
   next_maintenance_start_ts TIMESTAMP COMMENT 'Start (UTC) of next_maintenance_window_id.',
-  health_state STRING COMMENT 'Derived: retired, planned, critical (open critical alarm), warning (open major alarm or utilization >= 85), ok.',
+  health_state STRING COMMENT 'Derived: retired, planned, critical (open non-stale critical alarm), warning (open non-stale major alarm or utilization >= 85), ok. Stale alarms (uncleared > 7 days) do not affect health.',
   telemetry_as_of_ts TIMESTAMP COMMENT 'Latest telemetry hour in the twin (network-wide), the measurement snapshot.',
   state_as_of_ts TIMESTAMP COMMENT 'UTC time this gold table was refreshed; displayed as Twin as of.'""" + PROVENANCE_DDL,
 )
@@ -167,9 +171,9 @@ def twin_current_state():
       FROM silver_resource r
     ), alarm_scope AS (
       SELECT resource_id AS alarm_resource_id,
-             COUNT_IF(cleared_ts IS NULL) AS open_n,
-             COUNT_IF(cleared_ts IS NULL AND severity = 'critical') AS open_crit,
-             COUNT_IF(cleared_ts IS NULL AND severity = 'major') AS open_major,
+             COUNT_IF(cleared_ts IS NULL AND ts >= TIMESTAMP'{STALE_CUTOFF_TS}') AS open_n,
+             COUNT_IF(cleared_ts IS NULL AND ts >= TIMESTAMP'{STALE_CUTOFF_TS}' AND severity = 'critical') AS open_crit,
+             COUNT_IF(cleared_ts IS NULL AND ts >= TIMESTAMP'{STALE_CUTOFF_TS}' AND severity = 'major') AS open_major,
              MAX(ts) AS last_ts
       FROM bronze_alarm GROUP BY resource_id
     ), svc_paths AS (

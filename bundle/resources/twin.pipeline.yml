@@ -1,0 +1,25 @@
+# Lakeflow Spark Declarative Pipeline for the Lakelink Fiber Network Scenario Twin
+# (bronze -> silver -> gold). Mirrors the live pipeline lakelink-network-scenario-twin-sdp
+# (0c11cb07-999f-4b4d-a7fe-2137a94c90c2). Bind before the first deploy so the bundle manages
+# the existing pipeline instead of creating a second one that would collide on the same tables:
+#   databricks bundle deployment bind twin_pipeline 0c11cb07-999f-4b4d-a7fe-2137a94c90c2 --target dev
+# Tag: telco_project: network_scenario_twin (set here and by presets.tags). Owner: @devops (P5-BUNDLE-RESOURCES).
+resources:
+  pipelines:
+    twin_pipeline:
+      name: lakelink-network-scenario-twin-sdp
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      root_path: ../../pipeline
+      libraries:
+        - glob:
+            include: ../../pipeline/bronze/**
+        - glob:
+            include: ../../pipeline/silver/**
+        - glob:
+            include: ../../pipeline/gold/**
+      tags:
+        telco_project: network_scenario_twin
