@@ -234,14 +234,48 @@ app.get('/api/copper/:state', async (req: Request, res: Response) => {
   } catch (e) { fail(res, '/api/copper', src, e); }
 });
 
-// Copilot placeholder: explicit unavailable state until the copilot endpoint is wired (ARCHITECTURE s4.3).
+// POST /api/copilot/chat - proxy to the Lakelink Fiber Twin Copilot (Responses API, ARCHITECTURE s4.3).
+// P5-APP-COPILOT-ALL-MESSAGES: the supervisor emits its read-only refusal / Lakelink-Fiber-only notice as an EARLY assistant
+// message (after policy_check), then tool calls, then a final message. Return EVERY assistant message in order, never only output[-1].
 // Designer F1: user-facing messages never carry internal task codes.
-app.post('/api/copilot/chat', (_req: Request, res: Response) => {
-  if (!process.env.COPILOT_ENDPOINT) {
-    res.status(503).json({ data: null, as_of: null, source_table: 'copilot', status: 'empty', message: 'Copilot not yet available' });
+const COPILOT_ENDPOINT = (process.env.COPILOT_ENDPOINT || '').replace(/[^A-Za-z0-9_-]/g, '');
+const MAX_MSG = 2000, MAX_TURNS = 10;
+interface Turn { role: 'user' | 'assistant'; content: string }
+interface RespItem { type?: string; role?: string; content?: Array<{ type?: string; text?: string }> }
+export function assistantMessages(output: RespItem[] | undefined): string[] {
+  return (output ?? [])
+    .filter((o) => o?.type === 'message' && (o.role ?? 'assistant') === 'assistant')
+    .map((o) => (o.content ?? []).map((c) => (typeof c?.text === 'string' ? c.text : '')).join('').trim())
+    .filter((t) => t.length > 0);
+}
+app.post('/api/copilot/chat', async (req: Request, res: Response) => {
+  const src = 'copilot';
+  if (!COPILOT_ENDPOINT) {
+    res.status(503).json({ data: null, as_of: null, source_table: src, status: 'empty', message: 'Copilot not yet available' });
     return;
   }
-  res.status(501).json({ data: null, as_of: null, source_table: 'copilot', status: 'empty', message: 'Copilot not yet available' });
+  const raw = (req.body ?? {}) as { message?: unknown; history?: unknown };
+  const message = typeof raw.message === 'string' ? raw.message.trim() : '';
+  if (!message || message.length > MAX_MSG) return bad(res, src, `Message must be 1 to ${MAX_MSG} characters`);
+  const history: Turn[] = Array.isArray(raw.history)
+    ? (raw.history as unknown[]).filter((t): t is Turn => typeof t === 'object' && t !== null && ((t as Turn).role === 'user' || (t as Turn).role === 'assistant') && typeof (t as Turn).content === 'string')
+        .slice(-MAX_TURNS).map((t) => ({ role: t.role, content: t.content.slice(0, MAX_MSG) }))
+    : [];
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 120_000);
+  try {
+    const rawHost = process.env.DATABRICKS_HOST || '';
+    const host = rawHost.startsWith('http') ? rawHost : `https://${rawHost}`;
+    const r = await fetch(`${host}/serving-endpoints/${COPILOT_ENDPOINT}/invocations`, {
+      method: 'POST', signal: ctl.signal,
+      headers: { Authorization: `Bearer ${await spToken()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: [...history, { role: 'user', content: message }] }),
+    });
+    if (!r.ok) throw new Error(`copilot endpoint returned ${r.status}`);
+    const j = (await r.json()) as { output?: RespItem[] };
+    const messages = assistantMessages(j.output);
+    res.json({ data: { messages }, as_of: new Date().toISOString(), source_table: src, status: messages.length ? 'ok' : 'empty' });
+  } catch (e) { fail(res, '/api/copilot/chat', src, e); }
+  finally { clearTimeout(timer); }
 });
 
 app.use('/api', (_req, res) => res.status(404).json({ data: null, as_of: null, source_table: '', status: 'error', message: 'Unknown route' }));

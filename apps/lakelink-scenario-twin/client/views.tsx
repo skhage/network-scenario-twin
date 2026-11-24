@@ -1,7 +1,7 @@
 // Lakelink Fiber Scenario Twin - the 3 wow views (P5-APP-WOW-VIEWS) built to the binding @designer findings W1-W6
 // (P5-APP-WOW-VIEW-UX-SPEC; brand_guide s1, s3, s4, s8). Tag: telco_project: network_scenario_twin.
 // Read-only: every call is a GET over Lakebase nst_twin_state.twin_app (D-004, D-010). Numbers always carry a provenance badge (W1).
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { CircleDashed, CircleX, ClockAlert, Download, ArrowUpDown, ArrowUp, ArrowDown, Wrench, Layers, ShieldCheck } from 'lucide-react';
 import { Provenance, type ProvenanceKind, Money, StatusBadge, ChartFrame, type Column, CORRIDOR_CHART, fmtTs, fmtDate, fmtDays, fmtPct } from './theme';
 
@@ -209,8 +209,25 @@ type ChartRow = { date: string; series: string; p50: string; p10: string; p90: s
 const utc = (d: string) => new Date(`${d}T00:00:00Z`).getTime();
 const monthLabel = (ms: number) => new Date(ms).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
+// P5-APP-WOW-REFLOW-320 V2 (WCAG 1.4.4): render the SVG at its real container width so text is never scaled below 12px.
+function useWidth<T extends HTMLElement>(fallback: number): [React.RefObject<T>, number] {
+  const ref = useRef<T>(null);
+  const [w, setW] = useState(fallback);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const set = () => { const cw = Math.floor(el.getBoundingClientRect().width); if (cw > 0) setW(cw); };
+    set();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(set); ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w];
+}
+
 function CorridorChart({ act, fc }: { act: Act[]; fc: Fc[] }) {
-  const W = 800, H = 320, P = { l: 48, r: 16, t: 24, b: 32 };
+  const [box, W] = useWidth<HTMLDivElement>(800);
+  const H = 320, P = { l: 48, r: 16, t: 24, b: 32 };
+  const narrow = W < 600; const tickStep = narrow ? 3 : 2;
   const xs = [...act.map((a) => utc(a.util_date)), ...fc.map((f) => utc(f.month))];
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
   const thr = fc[0]?.threshold_pct ?? CORRIDOR_CHART.threshold.value;
@@ -226,20 +243,22 @@ function CorridorChart({ act, fc }: { act: Act[]; fc: Fc[] }) {
   const band = fc.length ? `${path(fc.map((f) => [X(utc(f.month)), Y(f.p90)]))}${[...fc].reverse().map((f) => `L${X(utc(f.month)).toFixed(1)},${Y(f.p10).toFixed(1)}`).join('')}Z` : '';
   const yTicks: number[] = []; for (let v = y0; v <= y1; v += 10) yTicks.push(v);
   const xTicks: number[] = []; const t = new Date(x0); t.setUTCDate(1); t.setUTCMonth(t.getUTCMonth() + 1);
-  for (; t.getTime() <= x1; t.setUTCMonth(t.getUTCMonth() + 2)) xTicks.push(t.getTime());
+  for (; t.getTime() <= x1; t.setUTCMonth(t.getUTCMonth() + tickStep)) xTicks.push(t.getTime());
   const pb = fc[0]?.prebuild_trigger_date; const pbIn = pb && utc(pb) >= x0 && utc(pb) <= x1;
+  // keep the pre-build label inside the plot: flip it to the left of the line in the right half
+  const pbFlip = pbIn ? X(utc(pb!)) > W / 2 : false;
   const C = CORRIDOR_CHART;
-  return (<svg viewBox={`0 0 ${W} ${H}`} className="chart-svg" aria-hidden="true" focusable="false">
+  return (<div ref={box} className="chart-box"><svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="chart-svg" aria-hidden="true" focusable="false">
     {yTicks.map((v) => <g key={v}><line x1={P.l} x2={W - P.r} y1={Y(v)} y2={Y(v)} stroke={C.grid} strokeWidth={1} /><text x={P.l - 8} y={Y(v) + 4} textAnchor="end">{v}%</text></g>)}
     {xTicks.map((ms) => <text key={ms} x={X(ms)} y={H - 8} textAnchor="middle">{monthLabel(ms)}</text>)}
     {band && <path d={band} fill={C.bandP10P90.fill} fillOpacity={C.bandP10P90.fillOpacity} />}
     <path d={obs} fill="none" stroke={C.observed.stroke} strokeWidth={C.observed.strokeWidth} />
     <path d={p50} fill="none" stroke={C.forecastP50.stroke} strokeWidth={C.forecastP50.strokeWidth} strokeDasharray={C.forecastP50.dash} />
     <line x1={P.l} x2={W - P.r} y1={Y(thr)} y2={Y(thr)} stroke={C.threshold.stroke} strokeWidth={C.threshold.strokeWidth} strokeDasharray={C.threshold.dash} />
-    <text x={W - P.r} y={Y(thr) - 6} textAnchor="end">{`${thr}% exhaustion threshold`}</text>
+    <text className="chart-key-label" x={W - P.r} y={Y(thr) - 6} textAnchor="end">{`${thr}% exhaustion threshold`}</text>
     {pbIn && <g><line x1={X(utc(pb!))} x2={X(utc(pb!))} y1={P.t} y2={H - P.b} stroke={C.prebuild.stroke} strokeWidth={C.prebuild.strokeWidth} strokeDasharray={C.prebuild.dash} />
-      <text x={X(utc(pb!)) + 6} y={P.t + 4}>{`Pre-build trigger ${fmtDate(pb!)}`}</text></g>}
-  </svg>);
+      <text className="chart-key-label" x={X(utc(pb!)) + (pbFlip ? -6 : 6)} y={P.t + 4} textAnchor={pbFlip ? 'end' : 'start'}>{`Pre-build trigger ${fmtDate(pb!)}`}</text></g>}
+  </svg></div>);
 }
 function Legend() {
   const C = CORRIDOR_CHART;

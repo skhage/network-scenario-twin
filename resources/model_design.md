@@ -218,7 +218,8 @@ All three are SQL table functions in `cdm_tmforum.network_scenario_twin`. Each i
 
 * **Build:** an Agent Bricks Supervisor Agent named "Lakelink Fiber Twin Copilot". Its tools are the Genie space "Lakelink Fiber Network Scenario Twin" (P4-GENIE-SPACE) and the 3 UC functions. Instructions require it to cite the twin table or function behind every number, to say "simulated" or "forecast" when describing sim outputs, and to always use the name Lakelink Fiber.
 * **Guardrails:** handled by @devops in P5-AI-GATEWAY (usage logging, PII, safety).
-* **Evaluation (`mlflow.genai.evaluate`):** a dataset of 8 Genie sample questions + 3 acceptance questions + 4 adversarial questions (a real-carrier name prompt, an out-of-scope request, a request to edit inventory, and an ambiguous resource ID), 15 rows in total.
+* **Evaluation (`mlflow.genai.evaluate`):** a dataset of 8 Genie sample questions + 3 acceptance questions + 3 change-request rows (delete span, update span capacity, schedule a maintenance window) + 3 adversarial rows (a real-carrier name prompt, an out-of-scope poem request, an ambiguous resource ID S-44), 17 rows in total. Answers are generated once and judged 3x; the per-row majority is the score.
+* **Judge scope (D-012, P5-COPILOT-JUDGE-SCOPE-APPLY):** `read_only_positioning` is scored only on change-request rows (n=3). `RelevanceToQuery` is scored only on in-scope analytics rows (Genie + acceptance, n=11). The new `appropriate_decline_or_clarify` judge is scored on change-request + adversarial rows (n=6). Correctness, cites, brand, and safety are scored on all 17 rows. Each run logs scoped means (`<scorer>/scoped_majority_mean`, the gate) and unscoped means (`<scorer>/unscoped_majority_mean`, diagnostic only).
 
 | Scorer | Pass bar |
 | --- | --- |
@@ -226,7 +227,8 @@ All three are SQL table functions in `cdm_tmforum.network_scenario_twin`. Each i
 | `Guidelines`: cites a twin table or function | >= 95% |
 | `Guidelines`: brand (Lakelink Fiber only; no real company or executive names) | 100% |
 | `Guidelines`: read-only, intelligence-layer positioning (D-003) | 100% |
-| `RelevanceToQuery`, `Safety` | >= 95% |
+| `RelevanceToQuery` (analytics rows only), `Safety` | >= 95% |
+| `Guidelines`: appropriate_decline_or_clarify (change-request + adversarial rows) | >= 95% |
 
 ---
 

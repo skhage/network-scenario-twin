@@ -258,3 +258,63 @@ def silver_service_level_agreement():
                 "source_customer_id", "source_table", "source_id", "origin", "simulation_run_id",
                 "service_customer_id")
     )
+
+
+# ---------------------------------------------------------------- silver_telemetry_stream
+# P2-STREAMING-TELEMETRY: flattened, typed, deduplicated span telemetry from bronze_telemetry_stream.
+# Stream-static join to silver_resource resolves span_id (FK check, WARN). Dedup on event_id with a 1-hour watermark.
+@dp.table(
+    name="silver_telemetry_stream",
+    comment=(
+        "Silver streaming span telemetry (SID Usage) for the Lakelink Fiber Network Scenario Twin (P2-STREAMING-TELEMETRY). "
+        "Grain: 1 row per span per 5-minute sample, deduplicated on event_id. Continues telemetry_span_hourly after "
+        "2026-11-15 23:00 UTC; DEN-SLC RapidRoute keeps following the AI-growth curve. Origin SYNTHETIC in the demo."
+    ),
+    table_properties=PROPS,
+    schema="""
+  event_id STRING NOT NULL COMMENT 'Producer event id; primary key of the stream (deduplicated).',
+  event_ts TIMESTAMP COMMENT 'Sample timestamp (UTC), 5-minute grain.',
+  span_id STRING COMMENT 'FK -> silver_resource.resource_id (resource_type span).',
+  corridor_id STRING COMMENT 'Corridor of the span from the event envelope (FK -> corridor.corridor_id).',
+  utilization_pct DOUBLE COMMENT 'Sampled span utilization percent (0-100).',
+  latency_ms DOUBLE COMMENT 'Sampled one-way latency in ms (> 0).',
+  optical_margin_db DOUBLE COMMENT 'Sampled optical signal margin in dB (floor 0.5). Lower is worse.',
+  producer STRING COMMENT 'Producer identifier (nst-synthetic-otel in the demo).',
+  batch_id BIGINT COMMENT 'Producer micro-batch number.',
+  origin STRING COMMENT 'Lineage: REAL or SYNTHETIC.',
+  simulation_run_id STRING COMMENT 'Lineage: producer run id (nst-stream-001 for the demo stream).',
+  ingested_at TIMESTAMP COMMENT 'Lineage: UTC time the event was ingested into bronze.',
+  span_resolved BOOLEAN COMMENT 'Data quality: TRUE when span_id resolves to a twin span in silver_resource and corridor matches (backs span_resolves).'""",
+)
+@dp.expect_or_fail("pk_event_id_not_null", "event_id IS NOT NULL")
+@dp.expect_all({
+    "span_resolves": "span_resolved",
+    "event_ts_parsed": "event_ts IS NOT NULL",
+    "utilization_in_range": "utilization_pct BETWEEN 0 AND 100",
+    "latency_positive": "latency_ms > 0",
+    "margin_floor": "optical_margin_db >= 0.5",
+})
+def silver_telemetry_stream():
+    spans = (spark.read.table("silver_resource").where("resource_type = 'span'")
+             .select(F.col("resource_id").alias("r_span_id"), F.col("corridor_id").alias("r_corridor_id")))
+    ev = (
+        spark.readStream.table("bronze_telemetry_stream")
+        .select(
+            "event_id",
+            F.to_timestamp("event_time", "yyyy-MM-dd'T'HH:mm:ss'Z'").alias("event_ts"),
+            F.col("resource.span_id").alias("span_id"),
+            F.col("resource.corridor_id").alias("corridor_id"),
+            F.col("metrics.utilization_pct").alias("utilization_pct"),
+            F.col("metrics.latency_ms").alias("latency_ms"),
+            F.col("metrics.optical_margin_db").alias("optical_margin_db"),
+            "producer", "batch_id", "origin", "simulation_run_id",
+            F.col("_ingested_at").alias("ingested_at"),
+        )
+        .withWatermark("event_ts", "1 hour")
+        .dropDuplicatesWithinWatermark(["event_id"])
+    )
+    return (
+        ev.join(spans, ev.span_id == spans.r_span_id, "left")
+        .withColumn("span_resolved", F.coalesce(F.col("r_corridor_id") == F.col("corridor_id"), F.lit(False)))
+        .drop("r_span_id", "r_corridor_id")
+    )

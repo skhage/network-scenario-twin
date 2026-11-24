@@ -80,3 +80,67 @@ def _define_bronze(table: str) -> None:
 
 for _t in TWIN_TABLES:
     _define_bronze(_t)
+
+
+# ------------------------------------------------------------ bronze_telemetry_stream
+# P2-STREAMING-TELEMETRY: pluggable streaming telemetry ingestion layer.
+#   nst.telemetry.source = volume (default) -> Auto Loader over the OTEL-style JSON landing volume
+#                          (synthetic producer: src/gen/generate_twin, section P2-STREAMING-TELEMETRY)
+#   nst.telemetry.source = kafka            -> Kafka / Event Hubs (Kafka surface) topic with the same JSON envelope;
+#                          set nst.telemetry.kafka.bootstrap and nst.telemetry.kafka.topic (auth via UC connection/secret).
+# Both paths produce the same bronze schema, so silver/gold are unaffected by the source choice.
+TELEMETRY_LANDING = "/Volumes/cdm_tmforum/network_scenario_twin/telemetry_landing/otel_json"
+TELEMETRY_ENVELOPE = (
+    "event_id STRING, event_time STRING, producer STRING, batch_id BIGINT, "
+    "resource STRUCT<span_id: STRING, corridor_id: STRING>, "
+    "metrics STRUCT<utilization_pct: DOUBLE, latency_ms: DOUBLE, optical_margin_db: DOUBLE>, "
+    "origin STRING, simulation_run_id STRING"
+)
+
+
+@dp.table(
+    name="bronze_telemetry_stream",
+    comment=(
+        "Bronze streaming table: raw span telemetry events for the Lakelink Fiber Network Scenario Twin "
+        "(P2-STREAMING-TELEMETRY). One row per received OTEL-style JSON envelope, append-only. Pluggable source: "
+        "UC volume telemetry_landing (default, synthetic 5-minute samples continuing telemetry_span_hourly after "
+        "2026-11-15 23:00 UTC) or a Kafka/Event Hubs topic. Origin SYNTHETIC in the demo."
+    ),
+    table_properties={"quality": "bronze", "telco_project": "network_scenario_twin",
+                      "source_table": TELEMETRY_LANDING},
+    schema="""
+  event_id STRING COMMENT 'Producer event id (32-hex sha2 of run id, span, batch, sample); dedup key downstream.',
+  event_time STRING COMMENT 'Sample timestamp as ISO-8601 UTC string from the envelope (parsed to TIMESTAMP in silver).',
+  producer STRING COMMENT 'Producer identifier (nst-synthetic-otel for the demo generator; collector name in production).',
+  batch_id BIGINT COMMENT 'Producer micro-batch number (one batch = 1 hour of 5-minute samples for 600 spans).',
+  resource STRUCT<span_id: STRING, corridor_id: STRING> COMMENT 'OTEL resource attributes: span_id (FK -> physical_resource.resource_id, type span) and corridor_id (FK -> corridor.corridor_id).',
+  metrics STRUCT<utilization_pct: DOUBLE, latency_ms: DOUBLE, optical_margin_db: DOUBLE> COMMENT 'Sampled metrics: utilization percent (0-100), one-way latency ms (> 0), optical margin dB (floor 0.5).',
+  origin STRING COMMENT 'Data origin: SYNTHETIC (demo producer) or REAL (production collector).',
+  simulation_run_id STRING COMMENT 'Producer run id (nst-stream-001 for the demo stream).',
+  _source_file STRING COMMENT 'Bronze lineage: landing file path (volume source) or kafka topic/partition/offset (kafka source).',
+  _ingested_at TIMESTAMP COMMENT 'Bronze lineage: UTC timestamp when the pipeline ingested the event.'
+""",
+)
+def bronze_telemetry_stream():
+    source = spark.conf.get("nst.telemetry.source", "volume")
+    if source == "kafka":
+        raw = (
+            spark.readStream.format("kafka")
+            .option("kafka.bootstrap.servers", spark.conf.get("nst.telemetry.kafka.bootstrap"))
+            .option("subscribe", spark.conf.get("nst.telemetry.kafka.topic"))
+            .option("startingOffsets", "earliest")
+            .load()
+        )
+        parsed = raw.select(
+            F.from_json(F.col("value").cast("string"), TELEMETRY_ENVELOPE).alias("e"),
+            F.concat_ws("/", F.col("topic"), F.col("partition").cast("string"), F.col("offset").cast("string")).alias("_source_file"),
+        ).select("e.*", "_source_file")
+    else:
+        parsed = (
+            spark.readStream.format("cloudFiles")
+            .option("cloudFiles.format", "json")
+            .schema(TELEMETRY_ENVELOPE)
+            .load(TELEMETRY_LANDING)
+            .withColumn("_source_file", F.col("_metadata.file_path"))
+        )
+    return parsed.withColumn("_ingested_at", F.current_timestamp())

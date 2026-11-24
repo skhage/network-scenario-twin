@@ -73,6 +73,44 @@ function OverviewView({ go }: { go: (p: string) => void }) {
   </>);
 }
 
+// P5-APP-COPILOT-ALL-MESSAGES: one bubble per assistant message, in endpoint order (the early read-only refusal
+// or Lakelink-Fiber-only notice comes before the final answer). Text is rendered as plain text (no HTML injection).
+interface ChatTurn { role: 'user' | 'assistant'; content: string }
+function CopilotChat() {
+  const [log, setLog] = useState<ChatTurn[]>([]);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const message = text.trim(); if (!message || busy) return;
+    const history = log.slice(-10);
+    setLog((l) => [...l, { role: 'user', content: message }]); setText(''); setBusy(true); setErr(null);
+    try {
+      const r = await fetch('/api/copilot/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, history }) });
+      const j = await r.json().catch(() => null) as { data: { messages: string[] } | null; message?: string } | null;
+      if (!r.ok || !j?.data) { setErr(j?.message || 'Could not reach the copilot'); return; }
+      const msgs = j.data.messages.length ? j.data.messages : ['The copilot returned no answer. Try rephrasing the question.'];
+      setLog((l) => [...l, ...msgs.map((m) => ({ role: 'assistant' as const, content: m }))]);
+    } catch { setErr('Could not reach the copilot'); }
+    finally { setBusy(false); }
+  };
+  return (<>
+    <div className="copilot-log" aria-live="polite" aria-atomic="false" aria-busy={busy}>
+      {log.length === 0 && <p className="secondary">Ask about blast radius, corridor exhaustion or copper sequencing. The copilot is read-only.</p>}
+      {log.map((t, i) => <div key={i} className={`copilot-msg ${t.role}`}><span className="sr-only">{t.role === 'user' ? 'You: ' : 'Copilot: '}</span>{t.content}</div>)}
+      {busy && <p className="secondary" role="status">Copilot is thinking</p>}
+      {err && <div className="banner error" role="alert">{err}</div>}
+    </div>
+    <form className="copilot-form" onSubmit={send}>
+      <label htmlFor="copilot-input" className="sr-only">Message the Lakelink Fiber Twin Copilot</label>
+      <textarea id="copilot-input" className="input" rows={2} maxLength={2000} value={text} onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); (e.currentTarget.form as HTMLFormElement).requestSubmit(); } }} />
+      <button type="submit" className="btn-primary" disabled={busy || !text.trim()}>Send</button>
+    </form>
+  </>);
+}
+
 function App() {
   const [path, go] = usePath();
   const [navOpen, setNavOpen] = useState(false);
@@ -115,7 +153,7 @@ function App() {
       </main>
       {copilot && <aside id="copilot" ref={drawerRef} className="drawer" aria-labelledby="copilot-title" {...(overlay ? { role: 'dialog', 'aria-modal': true } : {})}>
         <h2 id="copilot-title">Lakelink Fiber Twin Copilot</h2>
-        <div className="secondary copilot-log" aria-live="polite" aria-atomic="false">Copilot not yet available. It connects when the copilot endpoint is ready.</div>
+        <CopilotChat />
         <button className="btn-secondary" onClick={() => { setCopilot(false); toggleRef.current?.focus(); }}>Close</button>
       </aside>}
       {navOpen && overlay && <div className="scrim" aria-hidden="true" onClick={() => { setNavOpen(false); menuRef.current?.focus(); }} />}

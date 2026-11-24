@@ -95,6 +95,13 @@ a.link { color: var(--lf-primary-strong); }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } * { transition: none !important; } }
 
 .drawer { position: fixed; right: 0; top: 56px; bottom: 0; width: 400px; background: var(--lf-white); box-shadow: var(--lf-shadow-drawer); padding: 24px; z-index: 20; display: flex; flex-direction: column; gap: 16px; }
+/* P5-APP-COPILOT-ALL-MESSAGES: one bubble per message; plain text, wraps at 320px */
+.copilot-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.copilot-msg { border-radius: 8px; padding: 8px 12px; font-size: 14px; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+.copilot-msg.user { align-self: flex-end; background: var(--lf-navy); color: var(--lf-white); }
+.copilot-msg.assistant { align-self: flex-start; background: var(--lf-surface); color: var(--lf-navy); border: 1px solid var(--lf-border); }
+.copilot-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.copilot-form textarea { flex: 1; min-width: 0; width: 100%; resize: vertical; font: inherit; }
 
 /* Breakpoints 1280 / 1024 / 768 (brand_guide s6): KPI row 4-up >=1280, 3-up 1024-1279, 2-up 768-1023, 1-up <768 */
 @media (max-width: 1279px) {
@@ -125,10 +132,10 @@ main { min-width: 0; } /* reflow at 320px: only data tables scroll (WCAG 1.4.10)
 .toolbar { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; margin: 16px 0 24px; }
 .field-label { display: block; font: 600 14px/20px var(--lf-font); color: var(--lf-navy); margin-bottom: 4px; padding: 0; }
 .picker { min-width: 280px; }
-.combo { position: relative; display: flex; gap: 8px; }
-.input { min-height: 40px; width: 200px; border: 1px solid var(--lf-input-border); border-radius: 8px; padding: 8px 12px; font: 400 16px/24px var(--lf-font); color: var(--lf-navy); background: var(--lf-white); }
+.combo { position: relative; display: flex; flex-wrap: wrap; gap: 8px; } /* P5-APP-WOW-REFLOW-320 V1: button wraps under the input instead of overflowing */
+.input { min-height: 40px; width: 100%; min-width: 0; flex: 1 1 160px; border: 1px solid var(--lf-input-border); border-radius: 8px; padding: 8px 12px; font: 400 16px/24px var(--lf-font); color: var(--lf-navy); background: var(--lf-white); }
 .input[aria-invalid="true"] { border-color: var(--lf-primary-strong); }
-.listbox { position: absolute; top: 44px; left: 0; width: 280px; max-height: 320px; overflow-y: auto; margin: 0; padding: 4px 0; list-style: none; background: var(--lf-white); border: 1px solid var(--lf-input-border); border-radius: 8px; box-shadow: var(--lf-shadow-drawer); z-index: 12; }
+.listbox { position: absolute; top: 44px; left: 0; width: 100%; max-height: 320px; overflow-y: auto; margin: 0; padding: 4px 0; list-style: none; background: var(--lf-white); border: 1px solid var(--lf-input-border); border-radius: 8px; box-shadow: var(--lf-shadow-drawer); z-index: 12; }
 .listbox li { min-height: 40px; padding: 8px 12px; cursor: pointer; }
 .listbox li[aria-selected="true"], .listbox li:hover { background: var(--lf-surface); box-shadow: inset 4px 0 0 var(--lf-primary); }
 .field-error { color: var(--lf-primary-strong); font-size: 14px; line-height: 20px; margin: 4px 0 0; }
@@ -158,6 +165,11 @@ main { min-width: 0; } /* reflow at 320px: only data tables scroll (WCAG 1.4.10)
 .facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .corridor-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 24px; margin-top: 24px; }
 .chart-svg { width: 100%; height: auto; display: block; }
+/* P5-APP-WOW-REFLOW-320 V2: SVG drawn at container pixel width (scale 1), so 12px ticks stay 12px; key labels 14px. */
+.chart-box { width: 100%; min-width: 0; }
+.chart-card svg text.chart-key-label, .chart-svg text.chart-key-label { font: 500 14px/20px var(--lf-font); fill: var(--lf-navy); }
+.chart-svg text { font: 400 12px/16px var(--lf-font); fill: var(--lf-ink-secondary); }
+@media (max-width: 479px) { .picker { min-width: 0; width: 100%; } .toolbar { gap: 16px; } .toolbar > * { min-width: 0; max-width: 100%; } }
 .legend { display: flex; flex-wrap: wrap; gap: 16px; list-style: none; margin: 8px 0 0; padding: 0; font-size: 14px; line-height: 20px; }
 .legend li { display: inline-flex; align-items: center; gap: 8px; }
 .plain-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
