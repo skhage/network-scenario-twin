@@ -210,7 +210,7 @@ All three are SQL table functions in `cdm_tmforum.network_scenario_twin`. Each i
 | --- | --- | --- |
 | `blast_radius(resource_id STRING)` | Failure set, affected services/customers, Dual Path both-failed customers, sla_exposure_mrr, degraded_mrr | `sim_failure_result` + `v_sim_failure_customer_impact` |
 | `corridor_forecast(corridor_id STRING)` | 12 monthly P10/P50/P90 values, exhaustion date and band, days to exhaustion, implied pre-build trigger date (exhaustion minus 180-day build lead time) | `sim_capacity_forecast` |
-| `copper_sequence(state STRING)` | Wire centers ranked by sequencing score: decommission_target asc, high_value_customers desc, active_circuits asc, copper_miles desc (proceeds) | `copper_wire_center` |
+| `copper_sequence(state STRING)` | Wire centers ranked for sequencing (D-011, 2026-11-24): flagged first (`high_value_customers > 0 AND decommission_target < 2027-06-01`, exposed as `migration_required_before_target`), then decommission_target asc, high_value_customers desc, active_circuits asc, copper_miles desc (proceeds). Verified IA order: IA-WC-01 (flagged, 3 HVC, 2027-05-01), IA-WC-05, IA-WC-07, IA-WC-02, IA-WC-03, IA-WC-04, IA-WC-06, IA-WC-08 | `copper_wire_center` |
 
 ---
 

@@ -52,13 +52,13 @@ const STATUS: Record<StatusKind, { label: string; icon: LucideIcon; cls: string 
 };
 export function StatusBadge({ kind, label }: { kind: StatusKind; label?: string }) {
   const s = STATUS[kind]; const I = s.icon;
-  return <span className={`badge ${s.cls}`}><I size={12} strokeWidth={1.5} aria-hidden="true" />{label ?? s.label}</span>;
+  return <span className={`badge ${s.cls}`}><I size={16} strokeWidth={1.5} aria-hidden="true" />{label ?? s.label}</span>;
 }
 
 export type ProvenanceKind = 'Observed' | 'Simulated' | 'Forecast';
 export function Provenance({ kind }: { kind: ProvenanceKind }) {
   const I = kind === 'Observed' ? Activity : kind === 'Simulated' ? FlaskConical : TrendingUp;
-  return <span className="badge"><I size={12} strokeWidth={1.5} aria-hidden="true" />{kind}</span>;
+  return <span className="badge"><I size={16} strokeWidth={1.5} aria-hidden="true" />{kind}</span>; // designer F5: 16px inline icon (s7)
 }
 
 /**

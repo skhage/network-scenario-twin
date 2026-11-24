@@ -3,10 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Network, Gauge, Cable, LayoutDashboard, MessageSquare, Menu, X, ClockAlert, CircleDashed } from 'lucide-react';
 import { APP_NAME as APP, pageTitle, Provenance, Money, fmtTs, fmtDate, fmtDays } from './theme';
+import { useApi, StateBanner, BlastRadiusView, CorridorView, CopperView } from './views';
 import './styles.css';
-
-type Status = 'ok' | 'empty' | 'stale' | 'error';
-interface Envelope<T> { data: T | null; as_of: string | null; source_table: string; status: Status; message?: string }
 
 const ROUTES = [
   { path: '/', label: 'Overview', icon: LayoutDashboard },
@@ -46,48 +44,33 @@ function usePath(): [string, (p: string) => void] {
   useEffect(() => { const h = () => setP(window.location.pathname); window.addEventListener('popstate', h); return () => window.removeEventListener('popstate', h); }, []);
   return [p, (n: string) => { window.history.pushState({}, '', n); setP(n); }];
 }
-function useApi<T>(url: string) {
-  const [s, setS] = useState<{ loading: boolean; env?: Envelope<T>; err?: string }>({ loading: true });
-  const load = () => {
-    setS({ loading: true });
-    fetch(url).then(async (r) => { const j = (await r.json()) as Envelope<T>; setS(r.ok ? { loading: false, env: j } : { loading: false, err: j.message || `Could not load ${url}` }); })
-      .catch(() => setS({ loading: false, err: `Could not load ${url}` }));
-  };
-  useEffect(load, [url]);
-  return { ...s, retry: load };
-}
-function StateBanner({ loading, err, env, retry, route }: { loading: boolean; err?: string; env?: Envelope<unknown>; retry: () => void; route: string }) {
-  if (loading) return <div className="skeleton" aria-busy="true" aria-label="Loading" />;
-  if (err) return <div className="banner error" role="alert">{err} ({route}). <button className="btn-primary" onClick={retry}>Retry</button></div>;
-  if (env?.status === 'stale') return <div className="banner"><ClockAlert size={16} strokeWidth={1.5} aria-hidden="true" />Twin data is older than 24 hours (as of {fmtTs(env.as_of)})</div>;
-  return null;
-}
+// useApi + StateBanner (loading / empty / error / stale, ARCHITECTURE s3.4) live in ./views and are shared by every view.
 
 interface Overview { blast: { resource_id: string; dual_path_both_failed: number; sla_exposure_mrr: number } | null; corridor: { corridor_id: string; days_to_exhaustion: number; exhaustion_date: string } | null; copper: { flagged: number; total: number } | null }
 
 function OverviewView({ go }: { go: (p: string) => void }) {
   const s = useApi<Overview>('/api/overview');
   const d = s.env?.data;
-  const Empty = ({ id }: { id: string }) => <p className="secondary"><CircleDashed size={16} strokeWidth={1.5} aria-hidden="true" /> No simulated result for {id} yet. Ask the copilot.</p>;
+  // Designer F2: provenance-specific empty copy plus a working next action (Retry); the card's Open link stays below.
+  const Empty = ({ msg }: { msg: string }) => <p className="secondary empty-state"><CircleDashed size={16} strokeWidth={1.5} aria-hidden="true" /> {msg} <button type="button" className="btn-secondary" onClick={s.retry}>Retry</button></p>;
+  // Designer F3: skeleton matches the final layout (3 story cards in the .stories grid).
+  const skeleton = <div className="stories" aria-hidden="true">{[0, 1, 2].map((i) => <div key={i} className="card skeleton story-skeleton" />)}</div>;
   return (<>
     <h1>Overview</h1>
     <p className="secondary">Intelligence layer above the inventory system of record.</p>
-    <StateBanner {...s} route="/api/overview" />
-    {!s.loading && !s.err && <section className="stories" aria-label="Wow moments">
+    <StateBanner {...s} route="/api/overview" what="overview data" loadingLabel="Loading overview" skeleton={skeleton} />
+    {!s.loading && !s.err && <section className="stories" aria-label="Key network scenarios">
       <article className="card"><h2>Blast radius: S-4471</h2><Provenance kind="Simulated" />
-        {d?.blast ? <><div className="headline">{d.blast.dual_path_both_failed}</div><p>Dual Path customers lose both paths if S-4471 fails (SRLG-88). SLA exposure <Money value={d.blast.sla_exposure_mrr} />.</p></> : <Empty id="S-4471" />}
+        {d?.blast ? <><div className="headline">{d.blast.dual_path_both_failed}</div><p>Dual Path customers lose both paths if S-4471 fails (SRLG-88). SLA exposure <Money value={d.blast.sla_exposure_mrr} />.</p></> : <Empty msg="No simulated result for S-4471 yet." />}
         <a className="link" href="/blast-radius/S-4471" onClick={(e) => { e.preventDefault(); go('/blast-radius/S-4471'); }}>Open blast radius</a></article>
       <article className="card"><h2>Corridor exhaustion: DEN-SLC</h2><Provenance kind="Forecast" />
-        {d?.corridor ? <><div className="headline">{fmtDays(d.corridor.days_to_exhaustion)}</div><p>DEN-SLC reaches the 95% exhaustion threshold on {fmtDate(d.corridor.exhaustion_date)} (P50).</p></> : <Empty id="DEN-SLC" />}
+        {d?.corridor ? <><div className="headline">{fmtDays(d.corridor.days_to_exhaustion)}</div><p>DEN-SLC reaches the 95% exhaustion threshold on {fmtDate(d.corridor.exhaustion_date)} (P50).</p></> : <Empty msg="No forecast for DEN-SLC yet." />}
         <a className="link" href="/corridors/DEN-SLC" onClick={(e) => { e.preventDefault(); go('/corridors/DEN-SLC'); }}>Open corridor countdown</a></article>
       <article className="card"><h2>Copper sequencing: Iowa</h2><Provenance kind="Observed" />
-        {d?.copper ? <><div className="headline">{d.copper.flagged} of {d.copper.total}</div><p>Iowa wire centers need high-value customer migration before the Jun 1, 2027 target.</p></> : <Empty id="IA" />}
+        {d?.copper ? <><div className="headline">{d.copper.flagged} of {d.copper.total}</div><p>Iowa wire centers have high-value customers to migrate before Jun 1, 2027.</p></> : <Empty msg="No twin data for IA yet." />}
         <a className="link" href="/copper/IA" onClick={(e) => { e.preventDefault(); go('/copper/IA'); }}>Open copper queue</a></article>
     </section>}
   </>);
-}
-function Placeholder({ title, id }: { title: string; id: string }) {
-  return (<><h1>{title}</h1><div className="card"><p className="secondary"><CircleDashed size={16} strokeWidth={1.5} aria-hidden="true" /> The {title.toLowerCase()} view for {id} is being built (P5-APP-WOW-VIEWS).</p></div></>);
 }
 
 function App() {
@@ -125,12 +108,15 @@ function App() {
       </nav>
       <main id="main" tabIndex={-1}>
         <div aria-live="polite" className="sr-only">{health.env?.status === 'stale' ? 'Twin data is stale' : ''}</div>
-        {view === 'Overview' ? <OverviewView go={nav} /> : <Placeholder title={view} id={id} />}
+        {view === 'Blast radius' ? <BlastRadiusView key={id} id={id} go={go} />
+          : view === 'Corridor exhaustion' ? <CorridorView key={id} id={id} go={go} />
+          : view === 'Copper sequencing' ? <CopperView key={id} id={id} />
+          : <OverviewView go={nav} />}
       </main>
       {copilot && <aside id="copilot" ref={drawerRef} className="drawer" aria-labelledby="copilot-title" {...(overlay ? { role: 'dialog', 'aria-modal': true } : {})}>
         <h2 id="copilot-title">Lakelink Fiber Twin Copilot</h2>
         <div className="secondary copilot-log" aria-live="polite" aria-atomic="false">Copilot not yet available. It connects when the copilot endpoint is ready.</div>
-        <button className="btn-primary" onClick={() => { setCopilot(false); toggleRef.current?.focus(); }}>Close</button>
+        <button className="btn-secondary" onClick={() => { setCopilot(false); toggleRef.current?.focus(); }}>Close</button>
       </aside>}
       {navOpen && overlay && <div className="scrim" aria-hidden="true" onClick={() => { setNavOpen(false); menuRef.current?.focus(); }} />}
     </div>

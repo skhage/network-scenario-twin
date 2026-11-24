@@ -1,0 +1,900 @@
+{
+  "datasets": [
+    {
+      "name": "corridor_util",
+      "displayName": "Corridor utilization (mv_corridor_utilization)",
+      "asset_name": "cdm_tmforum.network_scenario_twin.mv_corridor_utilization"
+    },
+    {
+      "name": "sla_exposure",
+      "displayName": "SLA exposure at risk (mv_sla_exposure)",
+      "asset_name": "cdm_tmforum.network_scenario_twin.mv_sla_exposure"
+    },
+    {
+      "name": "copper_readiness",
+      "displayName": "Copper decommissioning readiness (mv_copper_readiness)",
+      "asset_name": "cdm_tmforum.network_scenario_twin.mv_copper_readiness"
+    }
+  ],
+  "pages": [
+    {
+      "name": "overview",
+      "displayName": "Network risk overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "header_text",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Lakelink Fiber Network Scenario TwinIntelligence layer above the inventory system of record. Demo window Aug 18 to Nov 16, 2026 (synthetic data). Provenance: **Observed** = telemetry/gold, **Simulated** = blast-radius results, **Forecast** = capacity forecast. Money is USD/month. Use Ask Genie for follow-up questions."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_denslc_days",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "corridor_util",
+                  "fields": [
+                    {
+                      "name": "days_to_exhaustion",
+                      "expression": "MEASURE(`min_days_to_exhaustion`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`corridor_id` IN ('DEN-SLC')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": {
+                "title": "DEN-SLC days to 95% exhaustion (Forecast)",
+                "showTitle": true,
+                "description": "Forecast exhaustion Mar 16, 2027; pre-build trigger 90 days earlier",
+                "showDescription": true
+              },
+              "encodings": {
+                "value": {
+                  "fieldName": "days_to_exhaustion",
+                  "displayName": "Days to exhaustion",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_s4471_dualpath",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sla_exposure",
+                  "fields": [
+                    {
+                      "name": "dual_path_lost",
+                      "expression": "MEASURE(`dual_path_both_failed_customers`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`resource_id` IN ('S-4471')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": {
+                "title": "Dual Path customers losing both paths if S-4471 fails (Simulated)",
+                "showTitle": true,
+                "description": "S-4471 and S-4472 share SRLG-88",
+                "showDescription": true
+              },
+              "encodings": {
+                "value": {
+                  "fieldName": "dual_path_lost",
+                  "displayName": "Dual Path customers",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_s4471_exposure",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sla_exposure",
+                  "fields": [
+                    {
+                      "name": "s4471_exposure",
+                      "expression": "MEASURE(`sla_exposure_mrr`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`resource_id` IN ('S-4471')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": {
+                "title": "S-4471 SLA exposure, USD/month (Simulated)",
+                "showTitle": true,
+                "description": "SRLG-expanded failure of S-4471 + S-4472",
+                "showDescription": true
+              },
+              "encodings": {
+                "value": {
+                  "fieldName": "s4471_exposure",
+                  "displayName": "SLA exposure (USD/month)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_copper_hv",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "copper_readiness",
+                  "fields": [
+                    {
+                      "name": "hv_customers",
+                      "expression": "MEASURE(`high_value_customers`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`migration_risk_flag` IN (TRUE)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": {
+                "title": "High-value customers to migrate on flagged wire centers",
+                "showTitle": true,
+                "description": "Flagged = decommission target before Jun 1, 2027 with high-value customers",
+                "showDescription": true
+              },
+              "encodings": {
+                "value": {
+                  "fieldName": "hv_customers",
+                  "displayName": "High-value customers",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "denslc_trend",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "corridor_util",
+                  "fields": [
+                    {
+                      "name": "day",
+                      "expression": "DATE_TRUNC('DAY', `util_date`)"
+                    },
+                    {
+                      "name": "avg_util",
+                      "expression": "MEASURE(`avg_utilization_pct`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`corridor_id` IN ('DEN-SLC')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "frame": {
+                "title": "DEN-SLC RapidRoute daily utilization (Observed)",
+                "showTitle": true
+              },
+              "mark": {
+                "colors": [
+                  "#1B3139"
+                ]
+              },
+              "encodings": {
+                "x": {
+                  "fieldName": "day",
+                  "displayName": "Date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg_util",
+                  "displayName": "Utilization (%)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "annotations": [
+                {
+                  "type": "horizontal-line",
+                  "encodings": {
+                    "y": {
+                      "dataValue": "95",
+                      "dataType": "DOUBLE"
+                    },
+                    "label": {
+                      "value": "95% exhaustion threshold"
+                    }
+                  }
+                }
+              ],
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "corridor_current_util",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "corridor_util",
+                  "fields": [
+                    {
+                      "name": "corridor_name",
+                      "expression": "`corridor_name`"
+                    },
+                    {
+                      "name": "current_util",
+                      "expression": "MEASURE(`current_utilization_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": {
+                "title": "Current utilization by corridor, 7-day average on Nov 15, 2026 (Observed)",
+                "showTitle": true
+              },
+              "mark": {
+                "colors": [
+                  "#FF3621"
+                ]
+              },
+              "encodings": {
+                "y": {
+                  "fieldName": "corridor_name",
+                  "displayName": "Corridor",
+                  "scale": {
+                    "type": "categorical",
+                    "categorySize": {
+                      "type": "number-of-categories",
+                      "number": 10
+                    },
+                    "sort": {
+                      "by": "measure-reversed",
+                      "measure": {
+                        "fieldName": "current_util"
+                      }
+                    }
+                  }
+                },
+                "x": {
+                  "fieldName": "current_util",
+                  "displayName": "Utilization (%)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 5,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "corridor_exhaustion_table",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "corridor_util",
+                  "fields": [
+                    {
+                      "name": "corridor_id",
+                      "expression": "`corridor_id`"
+                    },
+                    {
+                      "name": "corridor_name",
+                      "expression": "`corridor_name`"
+                    },
+                    {
+                      "name": "exhaustion_band",
+                      "expression": "`exhaustion_band`"
+                    },
+                    {
+                      "name": "exhaustion_date",
+                      "expression": "`exhaustion_date`"
+                    },
+                    {
+                      "name": "days_to_exhaustion",
+                      "expression": "`days_to_exhaustion`"
+                    },
+                    {
+                      "name": "pre_build_trigger_date",
+                      "expression": "`pre_build_trigger_date`"
+                    },
+                    {
+                      "name": "current_util",
+                      "expression": "MEASURE(`current_utilization_pct`)"
+                    },
+                    {
+                      "name": "headroom_gbps",
+                      "expression": "MEASURE(`headroom_gbps`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "frame": {
+                "title": "Corridor exhaustion countdown (Forecast)",
+                "showTitle": true
+              },
+              "rowsPerPage": 10,
+              "freezeUpToColumnNumber": 1,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "corridor_id",
+                    "displayName": "Corridor ID"
+                  },
+                  {
+                    "fieldName": "corridor_name",
+                    "displayName": "Corridor"
+                  },
+                  {
+                    "fieldName": "exhaustion_band",
+                    "displayName": "Exhaustion band"
+                  },
+                  {
+                    "fieldName": "exhaustion_date",
+                    "displayName": "Exhaustion date"
+                  },
+                  {
+                    "fieldName": "days_to_exhaustion",
+                    "displayName": "Days to exhaustion"
+                  },
+                  {
+                    "fieldName": "pre_build_trigger_date",
+                    "displayName": "Pre-build trigger"
+                  },
+                  {
+                    "fieldName": "current_util",
+                    "displayName": "Current utilization (%)"
+                  },
+                  {
+                    "fieldName": "headroom_gbps",
+                    "displayName": "Headroom to 95% (Gbps)"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "top_sla_spans",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sla_exposure",
+                  "fields": [
+                    {
+                      "name": "resource_id",
+                      "expression": "`resource_id`"
+                    },
+                    {
+                      "name": "exposure",
+                      "expression": "MEASURE(`sla_exposure_mrr`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`resource_type` IN ('span')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": {
+                "title": "Top 10 spans by SLA exposure, USD/month (Simulated)",
+                "showTitle": true
+              },
+              "mark": {
+                "colors": [
+                  "#1B3139"
+                ]
+              },
+              "encodings": {
+                "y": {
+                  "fieldName": "resource_id",
+                  "displayName": "Span",
+                  "scale": {
+                    "type": "categorical",
+                    "categorySize": {
+                      "type": "number-of-categories",
+                      "number": 10
+                    },
+                    "sort": {
+                      "by": "measure-reversed",
+                      "measure": {
+                        "fieldName": "exposure"
+                      }
+                    }
+                  }
+                },
+                "x": {
+                  "fieldName": "exposure",
+                  "displayName": "SLA exposure (USD/month)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 5,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "sla_span_table",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sla_exposure",
+                  "fields": [
+                    {
+                      "name": "resource_id",
+                      "expression": "`resource_id`"
+                    },
+                    {
+                      "name": "corridor_name",
+                      "expression": "`corridor_name`"
+                    },
+                    {
+                      "name": "srlg",
+                      "expression": "`srlg`"
+                    },
+                    {
+                      "name": "sim_id",
+                      "expression": "`sim_id`"
+                    },
+                    {
+                      "name": "next_window_id",
+                      "expression": "`next_window_id`"
+                    },
+                    {
+                      "name": "exposure",
+                      "expression": "MEASURE(`sla_exposure_mrr`)"
+                    },
+                    {
+                      "name": "customers",
+                      "expression": "MEASURE(`affected_customers`)"
+                    },
+                    {
+                      "name": "dual_path",
+                      "expression": "MEASURE(`dual_path_both_failed_customers`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`resource_type` IN ('span')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "frame": {
+                "title": "SLA exposure by span (Simulated)",
+                "showTitle": true,
+                "description": "Blank exposure = no simulated result yet, not 0",
+                "showDescription": true
+              },
+              "rowsPerPage": 10,
+              "freezeUpToColumnNumber": 1,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "resource_id",
+                    "displayName": "Span"
+                  },
+                  {
+                    "fieldName": "corridor_name",
+                    "displayName": "Corridor"
+                  },
+                  {
+                    "fieldName": "srlg",
+                    "displayName": "SRLG"
+                  },
+                  {
+                    "fieldName": "sim_id",
+                    "displayName": "Simulation"
+                  },
+                  {
+                    "fieldName": "next_window_id",
+                    "displayName": "Next maintenance window"
+                  },
+                  {
+                    "fieldName": "exposure",
+                    "displayName": "SLA exposure (USD/month)"
+                  },
+                  {
+                    "fieldName": "customers",
+                    "displayName": "Affected customers"
+                  },
+                  {
+                    "fieldName": "dual_path",
+                    "displayName": "Dual Path both paths lost"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 17,
+            "width": 7,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "copper_queue",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "copper_readiness",
+                  "fields": [
+                    {
+                      "name": "wc_id",
+                      "expression": "`wc_id`"
+                    },
+                    {
+                      "name": "wc_name",
+                      "expression": "`wc_name`"
+                    },
+                    {
+                      "name": "state",
+                      "expression": "`state`"
+                    },
+                    {
+                      "name": "sequence_rank",
+                      "expression": "`sequence_rank`"
+                    },
+                    {
+                      "name": "decommission_target",
+                      "expression": "`decommission_target`"
+                    },
+                    {
+                      "name": "days_to_decommission",
+                      "expression": "`days_to_decommission`"
+                    },
+                    {
+                      "name": "migration_risk_flag",
+                      "expression": "`migration_risk_flag`"
+                    },
+                    {
+                      "name": "hv_customers",
+                      "expression": "MEASURE(`high_value_customers`)"
+                    },
+                    {
+                      "name": "hv_mrr",
+                      "expression": "MEASURE(`high_value_mrr_to_migrate`)"
+                    },
+                    {
+                      "name": "circuits",
+                      "expression": "MEASURE(`active_circuits`)"
+                    },
+                    {
+                      "name": "readiness",
+                      "expression": "MEASURE(`avg_retirement_readiness_score`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "frame": {
+                "title": "Copper decommissioning queue",
+                "showTitle": true,
+                "description": "Sequence rank is within state; flagged = migrate high-value customers before retirement",
+                "showDescription": true
+              },
+              "rowsPerPage": 10,
+              "freezeUpToColumnNumber": 1,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "wc_id",
+                    "displayName": "Wire center"
+                  },
+                  {
+                    "fieldName": "wc_name",
+                    "displayName": "Name"
+                  },
+                  {
+                    "fieldName": "state",
+                    "displayName": "State"
+                  },
+                  {
+                    "fieldName": "sequence_rank",
+                    "displayName": "Sequence rank"
+                  },
+                  {
+                    "fieldName": "decommission_target",
+                    "displayName": "Decommission target"
+                  },
+                  {
+                    "fieldName": "days_to_decommission",
+                    "displayName": "Days to decommission"
+                  },
+                  {
+                    "fieldName": "migration_risk_flag",
+                    "displayName": "Migration risk flag"
+                  },
+                  {
+                    "fieldName": "hv_customers",
+                    "displayName": "High-value customers"
+                  },
+                  {
+                    "fieldName": "hv_mrr",
+                    "displayName": "High-value MRR (USD/month)"
+                  },
+                  {
+                    "fieldName": "circuits",
+                    "displayName": "Active circuits"
+                  },
+                  {
+                    "fieldName": "readiness",
+                    "displayName": "Readiness score"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 24,
+            "width": 12,
+            "height": 7
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#F9F7F4",
+        "dark": "#1B3139"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#22383F"
+      },
+      "widgetBorderColor": {
+        "light": "#D9D4CC",
+        "dark": "#33484F"
+      },
+      "selectionColor": {
+        "light": "#C8250F",
+        "dark": "#FF3621"
+      },
+      "visualizationColors": [
+        "#FF3621",
+        "#1B3139",
+        "#00A972",
+        "#6E8898",
+        "#FF8C69"
+      ],
+      "widgetCornerRadius": 8,
+      "fontSettings": {
+        "base": {
+          "fontFamily": "Inter",
+          "fontColor": {
+            "light": "#1B3139",
+            "dark": "#F9F7F4"
+          }
+        }
+      }
+    },
+    "genieSpace": {
+      "overrideId": "01f1e76a824b11f3819e54acb220681f",
+      "enablementMode": "ENABLED"
+    }
+  }
+}
