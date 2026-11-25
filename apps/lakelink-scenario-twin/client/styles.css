@@ -91,6 +91,14 @@ a.link { color: var(--lf-primary-strong); }
 .skeleton.story-skeleton { min-height: 240px; } /* designer F3: matches story card height */
 
 .skeleton { background: linear-gradient(90deg, #ECEFF1 25%, #F5F6F7 50%, #ECEFF1 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; min-height: 120px; }
+/* designer V5 (P5-APP-WOW-STATES-COPY, s9 Loading): wow-view skeletons match final layout */
+.skeleton.sk-kpi { min-height: 96px; }
+.skeleton.sk-table { min-height: 240px; margin-top: 24px; }
+.skeleton.sk-hero { min-height: 160px; }
+.skeleton.sk-chart { min-height: 360px; }
+.skeleton.sk-list { min-height: 200px; }
+.sk-table-rows { display: grid; gap: 8px; margin-top: 24px; }
+.skeleton.sk-row { min-height: 32px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } * { transition: none !important; } }
 

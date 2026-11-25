@@ -148,7 +148,7 @@ function App() {
         <div aria-live="polite" className="sr-only">{health.env?.status === 'stale' ? 'Twin data is stale' : ''}</div>
         {view === 'Blast radius' ? <BlastRadiusView key={id} id={id} go={go} />
           : view === 'Corridor exhaustion' ? <CorridorView key={id} id={id} go={go} />
-          : view === 'Copper sequencing' ? <CopperView key={id} id={id} />
+          : view === 'Copper sequencing' ? <CopperView key={id} id={id} go={go} />
           : <OverviewView go={nav} />}
       </main>
       {copilot && <aside id="copilot" ref={drawerRef} className="drawer" aria-labelledby="copilot-title" {...(overlay ? { role: 'dialog', 'aria-modal': true } : {})}>

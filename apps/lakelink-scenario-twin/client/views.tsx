@@ -43,9 +43,32 @@ export function StateBanner({ loading, err, code, env, retry, route, what = 'dat
   if (env?.status === 'stale') return <div className="banner" role="status"><ClockAlert size={16} strokeWidth={1.5} aria-hidden="true" />Twin data is older than 24 hours (as of {fmtTs(env.as_of)})</div>;
   return null;
 }
-export function EmptyState({ id, action }: { id: string; action: string }) {
-  return <p className="secondary empty-state"><CircleDashed size={16} strokeWidth={1.5} aria-hidden="true" />No simulated result for {id} yet. {action}</p>;
+// Designer V3 (P5-APP-WOW-STATES-COPY, brand_guide s9 Empty + s1 provenance): empty copy names the provenance of the missing data
+// and offers ONE working next action: a link to the demo default when another id is shown, otherwise Retry.
+export type EmptyKind = 'simulated' | 'forecast' | 'observed';
+const EMPTY_COPY: Record<EmptyKind, (id: string) => string> = {
+  simulated: (id) => `No simulated result for ${id} yet.`,
+  forecast: (id) => `No forecast for ${id} yet.`,
+  observed: (id) => `No twin data for ${id} yet.`,
+};
+type NextLink = { label: string; href: string; go: (p: string) => void };
+export function EmptyState({ kind, id, next, retry }: { kind: EmptyKind; id: string; next?: NextLink; retry?: () => void }) {
+  return <p className="secondary empty-state"><CircleDashed size={16} strokeWidth={1.5} aria-hidden="true" />{EMPTY_COPY[kind](id)}{' '}
+    {next ? <a className="link" href={next.href} onClick={(e) => { e.preventDefault(); next.go(next.href); }}>{next.label}</a>
+      : retry ? <button type="button" className="btn-secondary" onClick={retry}>Retry</button> : null}</p>;
 }
+/** Link to the demo default (e.g. 'Open S-4471') only when a different id is on screen. */
+const nextOr = (cur: string, def: string, base: string, go: (p: string) => void): NextLink | undefined =>
+  cur !== def ? { label: `Open ${def}`, href: `${base}/${encodeURIComponent(def)}`, go } : undefined;
+
+// Designer V5 (s9 Loading): skeletons match each view's final layout.
+const SkKpis = ({ n = 5 }: { n?: number }) => <div className="kpis">{Array.from({ length: n }, (_, i) => <div key={i} className="skeleton sk-kpi" />)}</div>;
+const SkTable = ({ rows = 0 }: { rows?: number }) => rows
+  ? <div className="sk-table-rows">{Array.from({ length: rows }, (_, i) => <div key={i} className="skeleton sk-row" />)}</div>
+  : <div className="skeleton sk-table" />;
+const SkHero = () => <div className="skeleton sk-hero" />;
+const SkChart = () => <div className="skeleton sk-chart" />;
+const SkList = () => <div className="skeleton sk-list" />;
 const ready = (s: ApiState<unknown>) => !s.loading && !s.err;
 
 // ---------- W5 sortable, exportable table (th scope, aria-sort, tabular-nums) ----------
@@ -168,8 +191,8 @@ export function BlastRadiusView({ id, go }: { id: string; go: (p: string) => voi
       </fieldset>
     </div>
     <div aria-live="polite" className="sr-only">{ready(c) && rows.length ? `${MODEL_LABEL[model]}: ${down} customers down, ${rows.length - down} degraded.` : ''}</div>
-    <StateBanner {...b} route="/api/blast-radius" what="blast radius results" />
-    {ready(b) && (!r ? <div className="card section-gap"><EmptyState id={rid} action="Pick another resource or ask the copilot." /></div> : <>
+    <StateBanner {...b} route="/api/blast-radius" what="blast radius results" skeleton={<><SkKpis /><SkTable /></>} />
+    {ready(b) && (!r ? <div className="card section-gap"><EmptyState kind="simulated" id={rid} next={nextOr(rid, 'S-4471', '/blast-radius', go)} retry={b.retry} /></div> : <>
       <section className="kpis" aria-label="Blast radius KPIs">
         <Kpi label="Affected services" value={int(r.affected_services)} kind="Simulated" />
         <Kpi label="Affected customers" value={int(r.affected_customers)} kind="Simulated" />
@@ -180,14 +203,15 @@ export function BlastRadiusView({ id, go }: { id: string; go: (p: string) => voi
       {others.length > 0 && <div className="card callout" role="note"><Layers size={20} strokeWidth={1.5} aria-hidden="true" />
         <p><strong>{[rid, ...others].join(' and ')} share {d?.resource?.srlg ?? 'one shared-risk link group'}.</strong> They are sold as diverse paths, but one conduit event takes down both.</p></div>}
       <div className="card callout neutral" role="note"><Wrench size={20} strokeWidth={1.5} aria-hidden="true" />
-        {!ready(m) ? <p className="secondary">{m.loading ? 'Loading maintenance windows' : 'Could not load maintenance windows (/api/blast-radius/maintenance).'}</p>
+        {m.loading ? <p className="secondary" role="status">Loading maintenance windows</p>
+          : m.err ? <div className="empty-state" role="alert"><CircleX size={16} strokeWidth={1.5} aria-hidden="true" />Could not load maintenance windows (/api/blast-radius/maintenance). <button type="button" className="btn-primary" onClick={m.retry}>Retry</button></div>
           : windows.length ? <p>Maintenance {windows[0].window_id} ({windows[0].work_type}, {windows[0].status}) runs {fmtTs(windows[0].start_ts)} to {fmtTs(windows[0].end_ts)}. A failure during this window carries the simulated SLA exposure of <Money value={r.sla_exposure_mrr} />. <Provenance kind="Simulated" /></p>
           : <p className="secondary">No maintenance windows are scheduled on {rid}.</p>}
       </div>
     </>)}
     <section className="card section-gap" aria-labelledby="cust-h">
       <div className="chart-head"><h2 id="cust-h">Customer impact</h2><Provenance kind="Simulated" /><span className="secondary">{MODEL_LABEL[model]}</span></div>
-      <StateBanner {...c} route="/api/blast-radius/customers" what="customer impact" />
+      <StateBanner {...c} route="/api/blast-radius/customers" what="customer impact" skeleton={<SkTable />} />
       {ready(c) && (rows.length
         ? <SortableTable caption={`Customer impact if ${rid} fails, ${MODEL_LABEL[model]}`} rows={rows} exportName={`lakelink-fiber-blast-radius-${rid}`}
             initial={{ key: 'sla_exposure_mrr', dir: 'descending' }} columns={[
@@ -196,7 +220,7 @@ export function BlastRadiusView({ id, go }: { id: string; go: (p: string) => voi
               { key: 'failure_state', header: 'State', render: (x) => <StatusBadge kind={x.failure_state === 'DOWN' ? 'down' : 'degraded'} /> },
               { key: 'sla_exposure_mrr', header: 'SLA exposure', numeric: true, render: (x) => <Money value={x.sla_exposure_mrr} /> },
             ]} />
-        : <EmptyState id={rid} action="Pick another resource or ask the copilot." />)}
+        : <EmptyState kind="simulated" id={rid} next={nextOr(rid, 'S-4471', '/blast-radius', go)} retry={c.retry} />)}
     </section>
   </>);
 }
@@ -280,9 +304,11 @@ export function CorridorView({ id, go }: { id: string; go: (p: string) => void }
   const fc = f.env?.data ?? []; const act = a.env?.data ?? []; const h = fc[0]; const list = l.env?.data ?? [];
   const passed = h?.prebuild_trigger_date ? daysUntil(h.prebuild_trigger_date) < 0 : false;
   const first = act[0], last = act[act.length - 1];
+  // Designer V6: never print 'Invalid Date' when a P10/P90 bound is missing.
+  const range = h?.exhaustion_date_p10 && h?.exhaustion_date_p90 ? `${fmtDate(h.exhaustion_date_p10)} to ${fmtDate(h.exhaustion_date_p90)}` : null;
   const summary = h && first && last
     ? `${cid} observed mean utilization ${last.util_mean_pct >= first.util_mean_pct ? 'rose' : 'fell'} from ${fmtPct(first.util_mean_pct)} to ${fmtPct(last.util_mean_pct)} over the last 90 days. `
-      + (h.exhaustion_date ? `The P50 forecast crosses the ${h.threshold_pct}% exhaustion threshold on ${fmtDate(h.exhaustion_date)} (P10-P90 ${fmtDate(h.exhaustion_date_p10!)} to ${fmtDate(h.exhaustion_date_p90!)}).` : 'The forecast does not cross the exhaustion threshold in the next 12 months.')
+      + (h.exhaustion_date ? `The P50 forecast crosses the ${h.threshold_pct}% exhaustion threshold on ${fmtDate(h.exhaustion_date)} (${range ? `P10-P90 ${range}` : 'P10-P90 range not available'}).` : 'The forecast does not cross the exhaustion threshold in the next 12 months.')
     : '';
   const rows: ChartRow[] = [
     ...act.map((x) => ({ date: fmtDate(x.util_date), series: 'Observed', p50: fmtPct(x.util_mean_pct), p10: '', p90: '' })),
@@ -292,29 +318,29 @@ export function CorridorView({ id, go }: { id: string; go: (p: string) => void }
   return (<>
     <h1>Corridor exhaustion: {cid}</h1>
     <p className="secondary">When this corridor runs out of capacity, and when the build has to start to get ahead of it.</p>
-    <StateBanner {...f} route="/api/corridors/forecast" />
-    {ready(f) && (!h ? <div className="card"><EmptyState id={cid} action="Pick a corridor from the list or ask the copilot." /></div> : <>
+    <StateBanner {...f} route="/api/corridors/forecast" what="corridor forecast" skeleton={<><SkHero /><div className="corridor-grid"><SkChart /><SkList /></div></>} />
+    {ready(f) && (!h ? <div className="card"><EmptyState kind="forecast" id={cid} next={nextOr(cid, 'DEN-SLC', '/corridors', go)} retry={f.retry} /></div> : <>
       <section className="card" aria-labelledby="cd-h">
         <div className="chart-head"><h2 id="cd-h">Days to exhaustion (P50)</h2><Provenance kind="Forecast" /></div>
         {/* W4: Display 40/700 is the only size allowed for #FF3621 text; static value, no ticking animation. */}
         <div className="headline">{h.days_to_exhaustion != null ? fmtDays(h.days_to_exhaustion) : 'Not within 12 months'}</div>
         {h.exhaustion_date && <dl className="facts">
           <div><dt>Exhaustion date (P50)</dt><dd>{fmtDate(h.exhaustion_date)}</dd></div>
-          <div><dt>P10-P90 range</dt><dd>{fmtDate(h.exhaustion_date_p10!)} to {fmtDate(h.exhaustion_date_p90!)}</dd></div>
-          <div><dt>Pre-build trigger</dt><dd>{fmtDate(h.prebuild_trigger_date!)}{passed ? ' (already passed)' : ''}</dd></div>
+          <div><dt>P10-P90 range</dt><dd>{range ?? 'Range not available'}</dd></div>
+          <div><dt>Pre-build trigger</dt><dd>{h.prebuild_trigger_date ? `${fmtDate(h.prebuild_trigger_date)}${passed ? ' (already passed)' : ''}` : 'Not available'}</dd></div>
         </dl>}
         <p className="secondary">The pre-build trigger is the exhaustion date minus the 180-day build lead time.</p>
       </section>
       <div className="corridor-grid">
         <div>
-          <StateBanner {...a} route="/api/corridors/actuals" />
+          <StateBanner {...a} route="/api/corridors/actuals" what="corridor utilization" skeleton={<SkChart />} />
           {ready(a) && <ChartFrame title={`${cid} utilization: 90 days observed, 12 months forecast`} provenance="Forecast" summary={summary} rows={rows} columns={cols}>
             <CorridorChart act={act} fc={fc} /><Legend />
           </ChartFrame>}
         </div>
         <section className="card" aria-labelledby="cl-h">
           <div className="chart-head"><h2 id="cl-h">Exhausting within 6 months</h2><Provenance kind="Forecast" /></div>
-          <StateBanner {...l} route="/api/corridors" />
+          <StateBanner {...l} route="/api/corridors" what="corridor list" skeleton={<SkList />} />
           {ready(l) && (list.length ? <ul className="plain-list">{list.map((c) => <li key={c.corridor_id}>
             <a className="link" href={`/corridors/${c.corridor_id}`} aria-current={c.corridor_id === cid ? 'page' : undefined} onClick={(e) => { e.preventDefault(); go(`/corridors/${c.corridor_id}`); }}>{c.corridor_name ?? c.corridor_id}</a>
             <div className="secondary num">{fmtDays(c.days_to_exhaustion)}, {fmtDate(c.exhaustion_date)}</div></li>)}</ul>
@@ -329,7 +355,7 @@ export function CorridorView({ id, go }: { id: string; go: (p: string) => void }
 type Wc = { rank: number; wc_id: string; wc_name: string; decommission_target: string; high_value_customers: number; active_circuits: number; copper_miles: number; readiness_score: number; flagged: boolean };
 type Hv = { wc_id: string; name: string; segment: string | null };
 
-export function CopperView({ id }: { id: string }) {
+export function CopperView({ id, go }: { id: string; go: (p: string) => void }) {
   const st = id || 'IA';
   const s = useApi<{ wire_centers: Wc[]; high_value_customers: Hv[] }>(`/api/copper/${encodeURIComponent(st)}`);
   const wcs = s.env?.data?.wire_centers ?? []; const hv = s.env?.data?.high_value_customers ?? [];
@@ -337,8 +363,8 @@ export function CopperView({ id }: { id: string }) {
   return (<>
     <h1>Copper sequencing: {st}</h1>
     <p className="secondary">Wire centers in decommissioning order: target date, then high-value customers, active circuits, and copper miles. A row is flagged when it retires before Jun 1, 2027 with high-value customers still on copper.</p>
-    <StateBanner {...s} route="/api/copper" />
-    {ready(s) && (!wcs.length ? <div className="card"><EmptyState id={st} action="Try another state or ask the copilot." /></div> : <>
+    <StateBanner {...s} route="/api/copper" what="copper queue" skeleton={<SkTable rows={8} />} />
+    {ready(s) && (!wcs.length ? <div className="card"><EmptyState kind="observed" id={st} next={nextOr(st, 'IA', '/copper', go)} retry={s.retry} /></div> : <>
       <section className="card" aria-labelledby="cq-h">
         <div className="chart-head"><h2 id="cq-h">Decommissioning queue</h2><Provenance kind="Observed" /><span className="secondary">{flagged.length} of {wcs.length} flagged</span></div>
         <SortableTable caption={`Copper decommissioning queue for ${st}`} rows={wcs} exportName={`lakelink-fiber-copper-queue-${st}`} columns={[

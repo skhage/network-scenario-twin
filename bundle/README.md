@@ -19,6 +19,7 @@ This folder is the bundle root (`databricks.yml`) for the Lakelink Fiber Network
 * Warehouse: reuses the existing shared `serverless-compute` warehouse through a lookup variable.
 * Compute: serverless for jobs and pipelines. Do not define classic clusters unless the workload cannot run serverless.
 * App name: exactly one app (D-004). The name is pinned to the existing `lakelink-scenario-twin` and is NOT namespaced per developer, because a namespaced name would create a second app on deploy.
+* Bound and deployed to dev on 2026-11-25 (P5-BUNDLE-BIND-DEPLOY, D-015): `twin_pipeline` -> `0c11cb07-999f-4b4d-a7fe-2137a94c90c2`, `scenario_twin_app` -> `lakelink-scenario-twin`, new job `twin_refresh` = 414227639240335 (PAUSED). Deploy result: 1 created, 2 changed, 0 deleted; source-linked (in-place). Re-run the bind commands below only for a fresh target or lost state.
 * Bind before the first deploy. `bundle plan --target dev` shows `3 to add` while unbound: a second pipeline that writes to the same tables, and a second app. Bind the existing resources first (needs the @pm ruling P5-BUNDLE-BIND-RULING):
   * `databricks bundle deployment bind twin_pipeline 0c11cb07-999f-4b4d-a7fe-2137a94c90c2 --target dev`
   * `databricks bundle deployment bind scenario_twin_app lakelink-scenario-twin --target dev`
