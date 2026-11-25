@@ -14,6 +14,21 @@
       "name": "copper_readiness",
       "displayName": "Copper decommissioning readiness (mv_copper_readiness)",
       "asset_name": "cdm_tmforum.network_scenario_twin.mv_copper_readiness"
+    },
+    {
+      "name": "sla_span_status",
+      "displayName": "SLA exposure by span with simulation status",
+      "queryLines": [
+        "SELECT resource_id, corridor_name, srlg, sim_id, next_window_id,\n",
+        "  CASE WHEN sim_id IS NULL THEN 'No simulated result yet' ELSE 'Simulated' END AS sim_status,\n",
+        "  MEASURE(sla_exposure_mrr) AS sla_exposure_mrr,\n",
+        "  MEASURE(affected_customers) AS affected_customers,\n",
+        "  MEASURE(dual_path_both_failed_customers) AS dual_path_both_failed_customers\n",
+        "FROM cdm_tmforum.network_scenario_twin.mv_sla_exposure\n",
+        "WHERE resource_type = 'span'\n",
+        "GROUP BY ALL\n",
+        "ORDER BY sla_exposure_mrr DESC NULLS LAST, resource_id"
+      ]
     }
   ],
   "pages": [
@@ -26,7 +41,11 @@
             "name": "header_text",
             "multilineTextboxSpec": {
               "lines": [
-                "## Lakelink Fiber Network Scenario TwinIntelligence layer above the inventory system of record. Demo window Aug 18 to Nov 16, 2026 (synthetic data). Provenance: **Observed** = telemetry/gold, **Simulated** = blast-radius results, **Forecast** = capacity forecast. Money is USD/month. Use Ask Genie for follow-up questions."
+                "## Lakelink Fiber Network Scenario Twin\n",
+                "\n",
+                "The intelligence layer above the inventory system of record, not an inventory system. Demo window Aug 18 to Nov 16, 2026 (synthetic data).\n",
+                "\n",
+                "Provenance: **Observed** = telemetry and gold tables, **Simulated** = blast-radius results, **Forecast** = capacity forecast. Units: money in USD/month, utilization in %, durations in days. A span without a simulation shows \"No simulated result yet\", never 0. Use Ask Genie for follow-up questions."
               ]
             }
           },
@@ -239,7 +258,7 @@
               "version": 2,
               "widgetType": "counter",
               "frame": {
-                "title": "High-value customers to migrate on flagged wire centers",
+                "title": "High-value customers to migrate on flagged wire centers (Observed)",
                 "showTitle": true,
                 "description": "Flagged = decommission target before Jun 1, 2027 with high-value customers",
                 "showDescription": true
@@ -619,7 +638,7 @@
               {
                 "name": "main",
                 "query": {
-                  "datasetName": "sla_exposure",
+                  "datasetName": "sla_span_status",
                   "fields": [
                     {
                       "name": "resource_id",
@@ -634,6 +653,10 @@
                       "expression": "`srlg`"
                     },
                     {
+                      "name": "sim_status",
+                      "expression": "`sim_status`"
+                    },
+                    {
                       "name": "sim_id",
                       "expression": "`sim_id`"
                     },
@@ -643,23 +666,18 @@
                     },
                     {
                       "name": "exposure",
-                      "expression": "MEASURE(`sla_exposure_mrr`)"
+                      "expression": "`sla_exposure_mrr`"
                     },
                     {
                       "name": "customers",
-                      "expression": "MEASURE(`affected_customers`)"
+                      "expression": "`affected_customers`"
                     },
                     {
                       "name": "dual_path",
-                      "expression": "MEASURE(`dual_path_both_failed_customers`)"
+                      "expression": "`dual_path_both_failed_customers`"
                     }
                   ],
-                  "filters": [
-                    {
-                      "expression": "`resource_type` IN ('span')"
-                    }
-                  ],
-                  "disaggregated": false
+                  "disaggregated": true
                 }
               }
             ],
@@ -669,7 +687,7 @@
               "frame": {
                 "title": "SLA exposure by span (Simulated)",
                 "showTitle": true,
-                "description": "Blank exposure = no simulated result yet, not 0",
+                "description": "Simulation status says \"No simulated result yet\" when a span has no simulation; its exposure is blank, never 0",
                 "showDescription": true
               },
               "rowsPerPage": 10,
@@ -687,6 +705,10 @@
                   {
                     "fieldName": "srlg",
                     "displayName": "SRLG"
+                  },
+                  {
+                    "fieldName": "sim_status",
+                    "displayName": "Simulation status"
                   },
                   {
                     "fieldName": "sim_id",
@@ -784,7 +806,7 @@
               "version": 2,
               "widgetType": "table",
               "frame": {
-                "title": "Copper decommissioning queue",
+                "title": "Copper decommissioning queue (Observed)",
                 "showTitle": true,
                 "description": "Sequence rank is within state; flagged = migrate high-value customers before retirement",
                 "showDescription": true

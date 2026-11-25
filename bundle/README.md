@@ -26,6 +26,17 @@ This folder is the bundle root (`databricks.yml`) for the Lakelink Fiber Network
   * Once bound, a dev deploy renames the pipeline with the `[dev stephen_hage] ` prefix, adds a `dev` tag, and redeploys the app from the same source path. Sync mode is in-place, so library paths stay unchanged.
 * Branding: the company name is always Lakelink Fiber.
 
+## Twin assistant endpoint governance (P5-AI-GATEWAY, 2026-11-25)
+
+* Endpoint `mas-4a251ff6-endpoint` (Agent Bricks Supervisor Agent, tile `4a251ff6-d504-42ec-a605-b822d96207e2`) is managed by Agent Bricks and is NOT a bundle resource.
+* AI Gateway (legacy endpoint `ai-gateway` block) is not available for this endpoint type: `PUT /api/2.0/serving-endpoints/mas-4a251ff6-endpoint/ai-gateway` returns 404 "AI Gateway is currently only supported for External Models, Provisioned Throughput and Custom or Agent Model endpoints." Unity Gateway service policies also reject agent services, so platform-level PII, safety, and rate-limit guardrails cannot be attached today.
+* Controls in place instead:
+  * Usage logging: MLflow traces in experiment `2158510149163116` (157 traces 2026-11-23 to 2026-11-25 at verification time).
+  * Input guardrail: the deterministic `policy_check` UC function (`cdm_tmforum.network_scenario_twin`) runs first on every turn (read-only change-request refusal, external-company refusal).
+  * Access: app service principal `61b6158f-4833-4da6-9116-20461eb91f17` has CAN_QUERY only; humans via `admins` and the owner.
+  * Tags: `telco_project: network_scenario_twin` on the endpoint and on the trace experiment.
+* Revisit if Agent Bricks adds AI Gateway support for supervisor endpoints.
+
 ## Commands (run with this folder as the working directory)
 
 * `databricks bundle validate --strict --target dev`

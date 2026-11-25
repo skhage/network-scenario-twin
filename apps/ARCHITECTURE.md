@@ -46,10 +46,10 @@ Execution identity: **service principal (SP)** for all resources. Twin data has 
 | Lakebase project | `telco-network-scenario-twin-project` (**reused**; no new project) |
 | Branch | `production` |
 | Database | `nst_twin_state` (**new database, separate from `databricks_postgres`**, which holds the task board) |
-| Schema `twin` | Read-only synced copies of UC gold and sim tables (owned by @data-engineer) |
+| Schema `twin_app` | Read-only synced copies of UC gold and sim tables (owned by @data-engineer). Per D-010 this replaces schema `twin`; the failed synced-table shells left in `twin` are not read by the app |
 | Schema `app_state` | App-owned operational state: copilot sessions and messages only (owned by the app SP) |
 
-The app SP gets `CONNECT` on `nst_twin_state`, `USAGE` + `SELECT` on schema `twin`, and ownership of schema `app_state`. It has no access to `databricks_postgres` (task board).
+The app SP gets `CONNECT` on `nst_twin_state`, `USAGE` + `SELECT` on schema `twin_app` (pending CEO approval, P5-APP-TWINAPP-GRANT), and ownership of schema `app_state`. It has no access to `databricks_postgres` (task board).
 
 ### 2.2 Data flow
 
@@ -61,18 +61,18 @@ UC Delta (cdm_tmforum.network_scenario_twin)
         |
         |  Lakebase synced tables (triggered/snapshot, owned by @data-engineer, P2-LAKEBASE-TWIN-STATE)
         v
-Lakebase nst_twin_state.twin.*  --(pg pool, SP OAuth)-->  AppKit server (Express routes)  --JSON-->  React client
+Lakebase nst_twin_state.twin_app.*  --(pg pool, SP OAuth)-->  AppKit server (Express routes)  --JSON-->  React client
 ```
 
 ### 2.3 Required synced tables (read contract for @data-engineer)
 
 Synced tables need a Delta **table** source with a primary key. Views cannot be synced, so the per-customer impact view must also exist as a table.
 
-| Lakebase table (`twin.`) | UC source | Primary key | Used by |
+| Lakebase table (`twin_app.`) | UC source | Primary key | Used by |
 | --- | --- | --- | --- |
 | `twin_current_state` | gold `twin_current_state` | `resource_id` | Overview freshness, resource lookup |
 | `sim_failure_result` | `sim_failure_result` | `sim_id` (unique `resource_id`) | Blast radius KPIs |
-| `sim_failure_customer_impact` | table form of `v_sim_failure_customer_impact` (sim_id, resource_id, customer_id, failure_state DOWN/DEGRADED, sla_exposure_mrr, model_name) | `(sim_id, customer_id, model_name)` | Blast radius customer table, counterfactual toggle |
+| `sim_failure_customer_impact` | table form of `v_sim_failure_customer_impact` (sim_id, resource_id, customer_id, failure_state DOWN/DEGRADED, sla_exposure_mrr, model_name) | `(sim_id, customer_id)` (model_name/failure_state not synced yet, P2-SIM-IMPACT-MODEL-COLS; server derives them from the parent `sim_failure_result` row) | Blast radius customer table, counterfactual toggle |
 | `sim_capacity_forecast` | `sim_capacity_forecast` | `forecast_id` | DEN-SLC countdown, forecast band |
 | `corridor_utilization_daily` | gold `corridor_utilization_daily` | `(corridor_id, util_date)` | Countdown actuals (90 days) |
 | `corridor` | `corridor` | `corridor_id` | Corridor picker, names |
@@ -80,13 +80,13 @@ Synced tables need a Delta **table** source with a primary key. Views cannot be 
 | `copper_wire_center` | `copper_wire_center` | `wc_id` | Iowa copper queue |
 | `maintenance_window` | `maintenance_window` | `window_id` | S-4471 maintenance window callout |
 
-The customer sync excludes PII beyond the fictional customer name. The app must display `twin_current_state` sync time as the "Twin as of" timestamp.
+All 9 tables above are ONLINE in `nst_twin_state.twin_app` (verified by @data-engineer 2026-11-23). The server reads the schema from env `TWIN_SCHEMA=twin_app` (app.yaml). The customer sync excludes PII beyond the fictional customer name. The app must display `twin_current_state` sync time as the "Twin as of" timestamp.
 
 ### 2.4 Server read rules
 
 * All SQL is parameterized (`$1` placeholders through the pg pool). No string concatenation.
 * Path and query inputs are validated before use: resource IDs `^[A-Z]{1,4}-\d{1,6}$`, corridor IDs `^[A-Z]{3}-[A-Z]{3}$`, state `^[A-Z]{2}$`. Invalid input returns HTTP 400.
-* The connection is read-only for `twin` (`SET default_transaction_read_only = on` for the twin pool). Only the `app_state` pool can write.
+* The connection is read-only for `twin_app` (`SET default_transaction_read_only = on` for the twin pool). Only the `app_state` pool can write.
 * **An empty result does not mean the data is absent.** Every route returns `{ data, as_of, source_table, status }` where `status` is `ok`, `empty`, or `stale`. The UI renders `empty` and `stale` explicitly. It never shows 0 as a fact.
 * Latency target: under 300 ms p95 per route from Lakebase, and under 2 s first paint for each wow view.
 
