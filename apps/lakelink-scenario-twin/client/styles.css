@@ -183,3 +183,12 @@ main { min-width: 0; } /* reflow at 320px: only data tables scroll (WCAG 1.4.10)
 .plain-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .wc-detail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
 @media (max-width: 1023px) { .corridor-grid, .wc-detail, .facts { grid-template-columns: 1fr; } }
+
+/* P5-APP-REFLOW-320-KPI (designer P5-UX-REVERIFY-REFLOW-320, WCAG 1.4.10): no horizontal scroll at 320/375/768/1280.
+   (1) .num is the positioned ancestor for the Money .sr-only span so it cannot escape the card;
+   (2) cards may shrink inside grid/flex tracks; (3) long KPI/headline values wrap instead of overflowing;
+   (4) KPI values step down to 24/32 below 480px (headline stays >=24px so #FF3621 remains large-text only, s2.4). */
+.num { position: relative; }
+.card { min-width: 0; }
+.kpi-value, .headline { overflow-wrap: anywhere; min-width: 0; max-width: 100%; }
+@media (max-width: 479px) { .kpi-value { font-size: 24px; line-height: 32px; } .headline { font-size: 32px; line-height: 40px; } }

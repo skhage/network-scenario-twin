@@ -84,7 +84,7 @@ Three scenarios with tunable assumptions (parameters in a small `value_model_ass
 | Lever | Input | Formula | Low | Base | High |
 | --- | --- | --- | --- | --- | --- |
 | Capex avoidance | 2026 capex midpoint $3.3B | capex x avoidance_pct (1.0% / 1.5% / 2.5%) | $33.0M | $49.5M | $82.5M |
-| Proactive operations savings | $10M/yr copilot estimate | $10M x multiplier (0.8 / 1.5 / 2.5) | $8.0M | $15.0M | $25.0M |
+| Proactive operations savings | $10M/yr existing AI operations assistant estimate | $10M x multiplier (0.8 / 1.5 / 2.5) | $8.0M | $15.0M | $25.0M |
 | Copper proceeds protection | $1.25B over 5 yrs = $250M/yr | $250M x uplift_pct (2% / 4% / 6%) | $5.0M | $10.0M | $15.0M |
 | **Total** | | sum of levers | **$46.0M** | **$74.5M** | **$122.5M** |
 

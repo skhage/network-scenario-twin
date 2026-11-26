@@ -39,7 +39,7 @@ The Network Scenario Twin is a governed, always-current digital twin of Lakelink
 | Lever | Input | Formula | Low | Base | High |
 | --- | --- | --- | --- | --- | --- |
 | Capex avoidance from scenario-driven build sequencing | 2026 capex $3.3B (midpoint) | capex x 1.0% / 1.5% / 2.5% | $33.0M | $49.5M | $82.5M |
-| Proactive operations savings | $10M/yr existing copilot estimate | $10M x 0.8 / 1.5 / 2.5 | $8.0M | $15.0M | $25.0M |
+| Proactive operations savings | $10M/yr existing AI operations assistant estimate | $10M x 0.8 / 1.5 / 2.5 | $8.0M | $15.0M | $25.0M |
 | Copper proceeds protection | $1.25B over 5 yrs = $250M/yr | $250M x 2% / 4% / 6% | $5.0M | $10.0M | $15.0M |
 | **Total** | | | **$46.0M** | **$74.5M** | **$122.5M** |
 
@@ -60,7 +60,7 @@ Assumptions to validate: capex avoidance %, proactive savings multiplier, copper
 | Lakeflow Spark Declarative Pipelines | $6K | Continuous inventory + telemetry sync |
 | Serverless SQL + interactive | $5K | Twin queries, Genie serving |
 | ML (forecasting, graph simulation) | $6K | Corridor demand, blast radius |
-| Agent Bricks twin copilot | $4K | NL copilot |
+| Agent Bricks twin assistant (Lakelink Fiber Splice) | $4K | NL assistant |
 | Lakebase operational state | $2K | Low-latency twin state for apps |
 | AI/BI dashboards | $2K | Executive + NOC views |
 
@@ -144,7 +144,7 @@ Open APIs: TMF639, TMF638, TMF642, TMF656, TMF621, TMF673/674, TMF620.
                  GOLD (twin state + sim results)
         /            |              |             \
    Lakebase      ML models     Metric views   Agent Bricks
- (operational  (forecast,     (KPI layer)    (twin copilot)
+ (operational  (forecast,     (KPI layer)    (Splice agent)
   twin state)   graph sim)
                             |
              Genie space + AI/BI dashboards + 1 Databricks App
@@ -159,7 +159,7 @@ Open APIs: TMF639, TMF638, TMF642, TMF656, TMF621, TMF673/674, TMF620.
 | MLflow + UC Model Registry | Corridor forecast, blast-radius models (champion/challenger) |
 | Metric views | Governed KPIs (utilization, SLA exposure, copper readiness) |
 | Genie space | NL twin queries |
-| Agent Bricks | Twin copilot with UC tools, AI Gateway guardrails |
+| Agent Bricks | Twin assistant Lakelink Fiber Splice with UC tools, AI Gateway guardrails |
 | AI/BI dashboards | NOC and executive views, each with embedded Genie |
 
 No preview feature is load-bearing for the MVP. Re-verify feature status at build time.
@@ -168,7 +168,7 @@ No preview feature is load-bearing for the MVP. Re-verify feature status at buil
 
 * **Discover (2 weeks):** inventory source mapping, telemetry path confirmation, pick 2 corridors + 1 copper state for pilot.
 * **MVP (6-8 weeks):** twin model for pilot scope, streaming telemetry, failure simulation, corridor forecast, Genie space. Exit: sim results validated against a known historical event.
-* **Scale (1 quarter):** all corridors, copper sequencing module, Agent Bricks copilot, AI/BI executive views.
+* **Scale (1 quarter):** all corridors, copper sequencing module, Agent Bricks Splice assistant, AI/BI executive views.
 * **Operate:** twin freshness SLOs, model retraining cadence, quarterly value readout vs. $74.5M base case.
 
 Risks: inventory-platform overlap perception (position as intelligence layer, co-design); telemetry volume unverified (start with sampled streams); planning org adoption (anchor in existing automation estate).
@@ -210,7 +210,7 @@ Time range 2026-08-18 to 2026-11-16. Geography: Lakelink Fiber metro and long-ha
 4. Metric views — corridor utilization, SLA exposure at risk, copper decommissioning readiness.
 5. Genie space over gold tables + metric views with the 8 sample questions below.
 6. AI/BI dashboard (embedded Genie) — corridor utilization with exhaustion countdown, top SLA-exposure spans, copper sequencing queue.
-7. Agent Bricks twin copilot answering planner questions with Genie/UC tools, citing twin tables.
+7. Agent Bricks twin assistant Lakelink Fiber Splice answering planner questions with Genie/UC tools, citing twin tables.
 8. One Databricks App ("Lakelink Fiber Scenario Twin") surfacing the three wow moments, reading Lakebase twin state.
 
 Genie sample questions:
@@ -307,15 +307,17 @@ Tasks are seeded into the Lakebase task board `telco-network-scenario-twin-proje
 | P4-DASHBOARD | @data-analyst | AI/BI dashboard with embedded Genie: utilization/exhaustion, top SLA-exposure spans, copper queue | high | P4-GENIE-SPACE |
 | P4-GENIE-BENCHMARK | @qa | Benchmark Genie on all 8 sample questions; file fixes | high | P4-GENIE-SPACE |
 
-### Phase 5 — Copilot and app
+### Phase 5 — Splice assistant and app
+
+Note (D-013): the twin assistant is named Lakelink Fiber Splice. Legacy task codes in this table are frozen Lakebase board keys and keep their original spelling.
 
 | ID | Owner | Task | Priority | Depends on |
 | --- | --- | --- | --- | --- |
-| P5-UC-TOOLS | @ml-engineer | UC functions for copilot: blast_radius(resource_id), corridor_forecast(corridor_id), copper_sequence(state) | high | P3-MODEL-REGISTRY |
-| P5-TWIN-COPILOT | @ml-engineer | Agent Bricks twin copilot using Genie + UC tools, citing twin tables; MLflow evaluation | critical | P5-UC-TOOLS,P4-GENIE-SPACE |
-| P5-AI-GATEWAY | @devops | AI Gateway guardrails and usage logging on copilot endpoint | medium | P5-TWIN-COPILOT |
+| P5-UC-TOOLS | @ml-engineer | UC functions for Splice: blast_radius(resource_id), corridor_forecast(corridor_id), copper_sequence(state) | high | P3-MODEL-REGISTRY |
+| P5-TWIN-COPILOT | @ml-engineer | Agent Bricks twin assistant (Lakelink Fiber Splice) using Genie + UC tools, citing twin tables; MLflow evaluation | critical | P5-UC-TOOLS,P4-GENIE-SPACE |
+| P5-AI-GATEWAY | @devops | AI Gateway guardrails and usage logging on Splice endpoint | medium | P5-TWIN-COPILOT |
 | P5-APP-SCAFFOLD | @app-developer | Scaffold ONE Databricks App "Lakelink Fiber Scenario Twin" (reads Lakebase twin state) | high | P2-LAKEBASE-TWIN-STATE |
-| P5-APP-WOW-VIEWS | @app-developer | Build the 3 wow views (S-4471 blast radius, DEN-SLC countdown, Iowa copper queue) + copilot chat | high | P5-APP-SCAFFOLD,P5-TWIN-COPILOT |
+| P5-APP-WOW-VIEWS | @app-developer | Build the 3 wow views (S-4471 blast radius, DEN-SLC countdown, Iowa copper queue) + Splice chat | high | P5-APP-SCAFFOLD,P5-TWIN-COPILOT |
 | P5-UX-REVIEW | @designer | Binding UX/brand/accessibility review of the app; file remediation tasks | high | P5-APP-WOW-VIEWS |
 | P5-BUNDLE-RESOURCES | @devops | Add pipeline, jobs, dashboard, app to the bundle; validate deploy to dev | medium | P0-BUNDLE-SCAFFOLD,P5-APP-SCAFFOLD |
 

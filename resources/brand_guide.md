@@ -5,7 +5,7 @@
 | Owner | @designer (UX and Brand Authority; findings are binding) |
 | Task | P0-BRAND-GUIDE |
 | Version | v1.0, 2026-11-17 |
-| Applies to | The one Databricks App "Lakelink Fiber Scenario Twin", the AI/BI dashboard(s), the Genie space "Lakelink Fiber Network Scenario Twin", the "Lakelink Fiber Twin Copilot", notebooks, and docs |
+| Applies to | The one Databricks App "Lakelink Fiber Scenario Twin", the AI/BI dashboard(s), the Genie space "Lakelink Fiber Network Scenario Twin", the twin assistant "Lakelink Fiber Splice", notebooks, and docs |
 | Supersedes | `apps/ARCHITECTURE.md` section 5 provisional tokens |
 | Tag | `telco_project: network_scenario_twin` |
 
@@ -13,9 +13,9 @@
 
 ## 1. Name and voice
 
-* The company is always **Lakelink Fiber**. Never use a real carrier, vendor-customer, or executive name anywhere: UI copy, page titles, HTML `<title>`, metadata, chart titles, Genie instructions and sample questions, copilot system prompts, synthetic customer names, test fixtures, and screenshots.
+* The company is always **Lakelink Fiber**. Never use a real carrier, vendor-customer, or executive name anywhere: UI copy, page titles, HTML `<title>`, metadata, chart titles, Genie instructions and sample questions, Splice system prompts, synthetic customer names, test fixtures, and screenshots.
 * Exec quotes from the research plan are attributed by role only ("Lakelink Fiber CTO"), never by person.
-* Product names (exact strings): "Lakelink Fiber Scenario Twin" (app), "Lakelink Fiber Network Scenario Twin" (Genie space), "Lakelink Fiber Twin Copilot" (agent).
+* Product names (exact strings): "Lakelink Fiber Scenario Twin" (app), "Lakelink Fiber Network Scenario Twin" (Genie space), "Lakelink Fiber Splice" (twin assistant agent, D-013).
 * Positioning line (D-003): "Intelligence layer above the inventory system of record." Never call the twin an inventory system.
 * Voice: plain, confident, operational. Lead with the number, then the consequence ("12 Dual Path customers lose both paths if S-4471 fails"). Sentence case for headings and buttons. No exclamation marks or emoji in product UI.
 * Every number is labelled by provenance with a badge: **Observed** (telemetry/gold), **Simulated** (sim_failure_result), **Forecast** (sim_capacity_forecast). Money shows unit and period: "USD/month".
@@ -114,8 +114,8 @@ Empty is never rendered as 0. A zero is shown only when the source returns a rea
 * 8px grid: spacing tokens 4 (hairline exceptions only), 8, 16, 24, 32, 48, 64.
 * Radius: 8px cards and inputs, 4px badges, 999px chips.
 * Elevation: card shadow `0 1px 2px rgba(27,49,57,0.08)`; drawer `0 8px 24px rgba(27,49,57,0.16)`.
-* Shell: navy top bar 56px (Lakelink Fiber wordmark, "Twin as of <ts>" chip, copilot toggle), left nav 240px, content max-width 1440px, 24px gutters.
-* Breakpoints (demo-laptop priority): **1280** (full layout, 4-up KPI row), **1024** (nav collapses to 64px icon rail with tooltips and labels via `aria-label`; KPI row 3-up), **768** (nav becomes a top menu button; KPI row 2-up; tables scroll horizontally inside their card with a sticky first column; copilot drawer becomes full-width overlay). Content must reflow at 320 CSS px without two-dimensional scrolling except data tables (WCAG 1.4.10).
+* Shell: navy top bar 56px (Lakelink Fiber wordmark, "Twin as of <ts>" chip, Splice toggle), left nav 240px, content max-width 1440px, 24px gutters.
+* Breakpoints (demo-laptop priority): **1280** (full layout, 4-up KPI row), **1024** (nav collapses to 64px icon rail with tooltips and labels via `aria-label`; KPI row 3-up), **768** (nav becomes a top menu button; KPI row 2-up; tables scroll horizontally inside their card with a sticky first column; Splice drawer becomes full-width overlay). Content must reflow at 320 CSS px without two-dimensional scrolling except data tables (WCAG 1.4.10).
 * Touch/click targets at least 24x24px (target 40px for primary controls).
 
 ## 7. Iconography
@@ -127,10 +127,10 @@ Empty is never rendered as 0. A zero is shown only when the source returns a rea
 
 1. Contrast: text 4.5:1 (large 3:1); UI components and meaningful graphics 3:1 (sections 2.3 and 4.2).
 2. Color is never the only signal (section 3).
-3. Full keyboard path: skip-to-content link, logical tab order, nav, pickers, toggles, sortable table headers, drawer. Escape closes the copilot drawer and returns focus to the toggle.
+3. Full keyboard path: skip-to-content link, logical tab order, nav, pickers, toggles, sortable table headers, drawer. Escape closes the Splice drawer and returns focus to the toggle.
 4. Visible focus: 2px #FF3621 outline + 2px offset on light surfaces; 2px white outline on navy.
-5. Semantics: one `h1` per view; landmarks (`header`, `nav`, `main`, `aside` for copilot); tables use `th scope` and `aria-sort`.
-6. Live regions: copilot streamed output in `aria-live="polite"`; loading/stale/error banners announced; the counterfactual toggle announces the new DOWN/DEGRADED counts.
+5. Semantics: one `h1` per view; landmarks (`header`, `nav`, `main`, `aside` for Splice); tables use `th scope` and `aria-sort`.
+6. Live regions: Splice streamed output in `aria-live="polite"`; loading/stale/error banners announced; the counterfactual toggle announces the new DOWN/DEGRADED counts.
 7. Forms and pickers: visible labels, typeahead follows the ARIA combobox pattern, errors in text.
 8. Motion: respect `prefers-reduced-motion` (no animated countdown ticking; skeleton shimmer disabled).
 9. Every chart has a table alternative and a text summary (e.g. "DEN-SLC reaches 95% on Mar 17, 2027, in 120 days (P10-P90: 104 to 138 days).")
@@ -144,14 +144,14 @@ Empty is never rendered as 0. A zero is shown only when the source returns a rea
 | Empty | Icon + "No simulated result for <id> yet" + next action; never "0" |
 | Error | Text error with route name and a Retry button; no raw stack traces |
 | Stale | Banner "Twin data is older than 24 hours (as of <ts>)" |
-| Copilot unavailable | Drawer shows "Copilot not yet available"; Genie fallback labelled "Genie mode" |
+| Splice unavailable | Drawer shows "Splice not yet available"; Genie fallback labelled "Genie mode" |
 
-## 10. Genie space and copilot copy
+## 10. Genie space and Splice copy
 
 * Space title: "Lakelink Fiber Network Scenario Twin". Description opens with the positioning line (D-003).
 * Sample questions: use the 8 from `project_plan.md` section 11.3 verbatim; no real company names.
 * General instructions must tell the space to label simulated vs forecast vs observed numbers, state units (USD/month, %, days), and say "no simulated result yet" rather than 0 when a resource has no sim row.
-* Copilot answers show citation chips (table or function name) and a provenance badge; refusals to edit inventory are shown as-is.
+* Splice answers show citation chips (table or function name) and a provenance badge; refusals to edit inventory are shown as-is.
 
 ## 11. Review protocol
 
