@@ -103,13 +103,20 @@ a.link { color: var(--lf-primary-strong); }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } * { transition: none !important; } }
 
 .drawer { position: fixed; right: 0; top: 56px; bottom: 0; width: 400px; background: var(--lf-white); box-shadow: var(--lf-shadow-drawer); padding: 24px; z-index: 20; display: flex; flex-direction: column; gap: 16px; }
-/* P5-APP-COPILOT-ALL-MESSAGES: one bubble per message; plain text, wraps at 320px */
-.copilot-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-.copilot-msg { border-radius: 8px; padding: 8px 12px; font-size: 14px; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
-.copilot-msg.user { align-self: flex-end; background: var(--lf-navy); color: var(--lf-white); }
-.copilot-msg.assistant { align-self: flex-start; background: var(--lf-surface); color: var(--lf-navy); border: 1px solid var(--lf-border); }
-.copilot-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
-.copilot-form textarea { flex: 1; min-width: 0; width: 100%; resize: vertical; font: inherit; }
+/* Lakelink Fiber Splice drawer: one bubble per message; plain text, wraps at 320px */
+.assistant-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.assistant-msg { border-radius: 8px; padding: 8px 12px; font-size: 14px; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+.assistant-msg.user { align-self: flex-end; background: var(--lf-navy); color: var(--lf-white); }
+.assistant-msg.assistant { align-self: flex-start; background: var(--lf-surface); color: var(--lf-navy); border: 1px solid var(--lf-border); }
+.assistant-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.assistant-form textarea { flex: 1; min-width: 0; width: 100%; resize: vertical; font: inherit; }
+/* Citation chips (one per twin tool), Genie mode label, seeded prompts. 8px grid, 40px targets, navy text on surface. */
+.cite-chips { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.cite-chip { display: inline-flex; align-items: center; min-height: 32px; padding: 0 8px; border-radius: 16px; border: 1px solid var(--lf-border); background: var(--lf-white); color: var(--lf-navy); font-size: 12px; line-height: 16px; text-decoration: none; overflow-wrap: anywhere; }
+a.cite-chip { text-decoration: underline; }
+.mode-label { margin: 0 0 8px; padding: 8px; border-radius: 8px; background: var(--lf-surface); border: 1px solid var(--lf-border); color: var(--lf-navy); font-size: 12px; line-height: 16px; }
+.prompt-list { display: flex; flex-direction: column; gap: 8px; }
+.prompt-list .prompt { min-height: 40px; text-align: left; white-space: normal; }
 
 /* Breakpoints 1280 / 1024 / 768 (brand_guide s6): KPI row 4-up >=1280, 3-up 1024-1279, 2-up 768-1023, 1-up <768 */
 @media (max-width: 1279px) {

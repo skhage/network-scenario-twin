@@ -9,7 +9,8 @@
     "build": "vite build",
     "start": "tsx server/server.ts",
     "lint:brand": "node tests/brand-lint.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:smoke": "tsx --test tests/smoke.spec.ts"
   },
   "dependencies": {
     "express": "^4.21.2",

@@ -87,7 +87,10 @@ for _t in TWIN_TABLES:
 #   nst.telemetry.source = volume (default) -> Auto Loader over the OTEL-style JSON landing volume
 #                          (synthetic producer: src/gen/generate_twin, section P2-STREAMING-TELEMETRY)
 #   nst.telemetry.source = kafka            -> Kafka / Event Hubs (Kafka surface) topic with the same JSON envelope;
-#                          set nst.telemetry.kafka.bootstrap and nst.telemetry.kafka.topic (auth via UC connection/secret).
+#                          set nst.telemetry.kafka.bootstrap and nst.telemetry.kafka.topic. Auth (P2-STREAM-REPLAY-IDEMPOTENCY):
+#                          set nst.telemetry.kafka.secret_scope + nst.telemetry.kafka.secret_key to a secret holding the full
+#                          SASL JAAS config line -> SASL_SSL / PLAIN (Event Hubs Kafka surface or Confluent API key). If unset,
+#                          the reader connects without auth (local/dev brokers only). Not exercised in the demo (volume source).
 # Both paths produce the same bronze schema, so silver/gold are unaffected by the source choice.
 TELEMETRY_LANDING = "/Volumes/cdm_tmforum/network_scenario_twin/telemetry_landing/otel_json"
 TELEMETRY_ENVELOPE = (
@@ -124,13 +127,21 @@ TELEMETRY_ENVELOPE = (
 def bronze_telemetry_stream():
     source = spark.conf.get("nst.telemetry.source", "volume")
     if source == "kafka":
-        raw = (
+        reader = (
             spark.readStream.format("kafka")
             .option("kafka.bootstrap.servers", spark.conf.get("nst.telemetry.kafka.bootstrap"))
             .option("subscribe", spark.conf.get("nst.telemetry.kafka.topic"))
             .option("startingOffsets", "earliest")
-            .load()
         )
+        scope = spark.conf.get("nst.telemetry.kafka.secret_scope", "")
+        key = spark.conf.get("nst.telemetry.kafka.secret_key", "")
+        if scope and key:
+            from pyspark.dbutils import DBUtils
+            jaas = DBUtils(spark).secrets.get(scope=scope, key=key)  # never logged or stored in pipeline config
+            reader = (reader.option("kafka.security.protocol", "SASL_SSL")
+                      .option("kafka.sasl.mechanism", spark.conf.get("nst.telemetry.kafka.sasl_mechanism", "PLAIN"))
+                      .option("kafka.sasl.jaas.config", jaas))
+        raw = reader.load()
         parsed = raw.select(
             F.from_json(F.col("value").cast("string"), TELEMETRY_ENVELOPE).alias("e"),
             F.concat_ws("/", F.col("topic"), F.col("partition").cast("string"), F.col("offset").cast("string")).alias("_source_file"),

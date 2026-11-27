@@ -4,6 +4,8 @@ import express, { Request, Response } from 'express';
 import pg from 'pg';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { RESOURCE_ID, CORRIDOR_ID, STATE, COPPER_ORDER_BY, RespItem, assistantMessages, citationsFrom, genieText, sseFrame, Citation } from './lib.ts';
+export { RESOURCE_ID, CORRIDOR_ID, STATE, assistantMessages };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.DATABRICKS_APP_PORT || process.env.PORT || 8000);
@@ -96,9 +98,6 @@ app.get('/api/overview', async (_req: Request, res: Response) => {
 });
 
 // Input validation (ARCHITECTURE s2.4). Invalid input -> HTTP 400 with a plain-text message the UI renders as-is (UX W3).
-export const RESOURCE_ID = /^[A-Z]{1,4}-\d{1,6}$/;
-export const CORRIDOR_ID = /^[A-Z]{3}-[A-Z]{3}$/;
-export const STATE = /^[A-Z]{2}$/;
 const MODELS = ['srlg_graph_v1', 'path_only_v1'];
 const MSG = { rid: 'Resource ID must look like S-4471', cid: 'Corridor ID must look like DEN-SLC', st: 'State must be a 2-letter code like IA', model: 'Model must be srlg_graph_v1 or path_only_v1', days: 'exhausting_within_days must be a whole number from 1 to 730' };
 function bad(res: Response, source: string, message: string) {
@@ -226,7 +225,7 @@ app.get('/api/copper/:state', async (req: Request, res: Response) => {
       `SELECT wc_id, wc_name, decommission_target::text AS decommission_target, high_value_customers, active_circuits, copper_miles::float8 AS copper_miles,
               retirement_readiness_score::float8 AS readiness_score, (high_value_customers > 0 AND decommission_target < DATE '2027-06-01') AS flagged
          FROM ${SCHEMA}.copper_wire_center WHERE state = $1
-        ORDER BY decommission_target ASC, high_value_customers DESC, active_circuits ASC, copper_miles DESC`, [st])]);
+        ORDER BY ${COPPER_ORDER_BY}`, [st])]);
     const flaggedIds = r.rows.filter((w) => w.flagged).map((w) => w.wc_id);
     const hv = flaggedIds.length ? (await pool.query(`SELECT copper_wc_id AS wc_id, name, segment FROM ${SCHEMA}.customer WHERE high_value_flag AND copper_wc_id = ANY($1) ORDER BY copper_wc_id, name`, [flaggedIds])).rows : [];
     const data = { wire_centers: r.rows.map((w, i) => ({ rank: i + 1, ...w })), high_value_customers: hv };
@@ -234,24 +233,59 @@ app.get('/api/copper/:state', async (req: Request, res: Response) => {
   } catch (e) { fail(res, '/api/copper', src, e); }
 });
 
-// POST /api/copilot/chat - proxy to the Lakelink Fiber Twin Copilot (Responses API, ARCHITECTURE s4.3).
-// P5-APP-COPILOT-ALL-MESSAGES: the supervisor emits its read-only refusal / Lakelink-Fiber-only notice as an EARLY assistant
-// message (after policy_check), then tool calls, then a final message. Return EVERY assistant message in order, never only output[-1].
-// Designer F1: user-facing messages never carry internal task codes.
-const COPILOT_ENDPOINT = (process.env.COPILOT_ENDPOINT || '').replace(/[^A-Za-z0-9_-]/g, '');
+// POST /api/assistant/chat - Lakelink Fiber Splice (D-013), the twin assistant (Responses API, ARCHITECTURE s4.3).
+// The supervisor emits its read-only refusal / Lakelink-Fiber-only notice as an EARLY assistant message, then tool calls,
+// then a final message: return EVERY assistant message in order, never only output[-1]. Designer F1: no task codes in copy.
+// Accept: text/event-stream -> SSE (events: meta, message, citations, error, done); otherwise one JSON envelope.
+// Fallback: if the Splice endpoint is unset or fails, answer through the Genie space in "Genie mode".
+const ASSISTANT_ENDPOINT = (process.env.ASSISTANT_ENDPOINT || '').replace(/[^A-Za-z0-9_-]/g, '');
+const GENIE_SPACE_ID = (process.env.GENIE_SPACE_ID || '').replace(/[^a-f0-9]/g, '');
 const MAX_MSG = 2000, MAX_TURNS = 10;
 interface Turn { role: 'user' | 'assistant'; content: string }
-interface RespItem { type?: string; role?: string; content?: Array<{ type?: string; text?: string }> }
-export function assistantMessages(output: RespItem[] | undefined): string[] {
-  return (output ?? [])
-    .filter((o) => o?.type === 'message' && (o.role ?? 'assistant') === 'assistant')
-    .map((o) => (o.content ?? []).map((c) => (typeof c?.text === 'string' ? c.text : '')).join('').trim())
-    .filter((t) => t.length > 0);
+type Mode = 'splice' | 'genie';
+interface Answer { mode: Mode; messages: string[]; citations: Citation[] }
+const wsHost = () => { const h = process.env.DATABRICKS_HOST || ''; return h.startsWith('http') ? h : `https://${h}`; };
+
+async function askSplice(input: Turn[], signal: AbortSignal): Promise<Answer> {
+  const r = await fetch(`${wsHost()}/serving-endpoints/${ASSISTANT_ENDPOINT}/invocations`, {
+    method: 'POST', signal,
+    headers: { Authorization: `Bearer ${await spToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input }),
+  });
+  if (!r.ok) throw new Error(`assistant endpoint returned ${r.status}`);
+  const j = (await r.json()) as { output?: RespItem[] };
+  return { mode: 'splice', messages: assistantMessages(j.output), citations: citationsFrom(j.output) };
 }
-app.post('/api/copilot/chat', async (req: Request, res: Response) => {
-  const src = 'copilot';
-  if (!COPILOT_ENDPOINT) {
-    res.status(503).json({ data: null, as_of: null, source_table: src, status: 'empty', message: 'Copilot not yet available' });
+async function askGenie(message: string, signal: AbortSignal): Promise<Answer> {
+  const base = `${wsHost()}/api/2.0/genie/spaces/${GENIE_SPACE_ID}`;
+  const h = { Authorization: `Bearer ${await spToken()}`, 'Content-Type': 'application/json' };
+  const s = await fetch(`${base}/start-conversation`, { method: 'POST', signal, headers: h, body: JSON.stringify({ content: message }) });
+  if (!s.ok) throw new Error(`genie start returned ${s.status}`);
+  const st = (await s.json()) as { conversation_id: string; message_id: string };
+  for (let i = 0; i < 40; i++) {
+    await new Promise((ok) => setTimeout(ok, 2000));
+    const m = await fetch(`${base}/conversations/${st.conversation_id}/messages/${st.message_id}`, { signal, headers: h });
+    if (!m.ok) throw new Error(`genie poll returned ${m.status}`);
+    const mj = (await m.json()) as { status?: string; attachments?: Array<{ text?: { content?: string }; query?: { description?: string } }> };
+    if (mj.status === 'COMPLETED') return { mode: 'genie', messages: genieText(mj), citations: [{ tool: 'genie', label: 'Genie space: Lakelink Fiber Network Scenario Twin', route: null }] };
+    if (mj.status === 'FAILED' || mj.status === 'CANCELLED') throw new Error(`genie message ${mj.status}`);
+  }
+  throw new Error('genie timed out');
+}
+async function answer(input: Turn[], message: string, signal: AbortSignal): Promise<Answer> {
+  if (ASSISTANT_ENDPOINT) {
+    try { return await askSplice(input, signal); }
+    catch (e) { console.error('[assistant] splice failed, trying Genie mode', e); if (!GENIE_SPACE_ID) throw e; }
+  }
+  if (GENIE_SPACE_ID) return askGenie(message, signal);
+  throw new Error('no assistant configured');
+}
+
+app.post('/api/assistant/chat', async (req: Request, res: Response) => {
+  const src = 'assistant';
+  const sse = String(req.headers.accept || '').includes('text/event-stream');
+  if (!ASSISTANT_ENDPOINT && !GENIE_SPACE_ID) {
+    res.status(503).json({ data: null, as_of: null, source_table: src, status: 'empty', message: 'Lakelink Fiber Splice is not yet available' });
     return;
   }
   const raw = (req.body ?? {}) as { message?: unknown; history?: unknown };
@@ -262,20 +296,30 @@ app.post('/api/copilot/chat', async (req: Request, res: Response) => {
         .slice(-MAX_TURNS).map((t) => ({ role: t.role, content: t.content.slice(0, MAX_MSG) }))
     : [];
   const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 120_000);
+  const input: Turn[] = [...history, { role: 'user', content: message }];
+  if (!sse) {
+    try {
+      const a = await answer(input, message, ctl.signal);
+      res.json({ data: a, as_of: new Date().toISOString(), source_table: src, status: a.messages.length ? 'ok' : 'empty' });
+    } catch (e) { fail(res, '/api/assistant/chat', src, e); }
+    finally { clearTimeout(timer); }
+    return;
+  }
+  // SSE: headers first, keep-alive comments while the supervisor works, then one event per assistant message.
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+  res.write(sseFrame('meta', { mode: ASSISTANT_ENDPOINT ? 'splice' : 'genie' }));
+  const ping = setInterval(() => res.write(': ping\n\n'), 10_000);
+  res.on('close', () => { if (!res.writableEnded) ctl.abort(); });
   try {
-    const rawHost = process.env.DATABRICKS_HOST || '';
-    const host = rawHost.startsWith('http') ? rawHost : `https://${rawHost}`;
-    const r = await fetch(`${host}/serving-endpoints/${COPILOT_ENDPOINT}/invocations`, {
-      method: 'POST', signal: ctl.signal,
-      headers: { Authorization: `Bearer ${await spToken()}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: [...history, { role: 'user', content: message }] }),
-    });
-    if (!r.ok) throw new Error(`copilot endpoint returned ${r.status}`);
-    const j = (await r.json()) as { output?: RespItem[] };
-    const messages = assistantMessages(j.output);
-    res.json({ data: { messages }, as_of: new Date().toISOString(), source_table: src, status: messages.length ? 'ok' : 'empty' });
-  } catch (e) { fail(res, '/api/copilot/chat', src, e); }
-  finally { clearTimeout(timer); }
+    const a = await answer(input, message, ctl.signal);
+    if (a.mode === 'genie') res.write(sseFrame('meta', { mode: 'genie' }));
+    for (const m of a.messages) res.write(sseFrame('message', { text: m }));
+    res.write(sseFrame('citations', a.citations));
+    res.write(sseFrame('done', { status: a.messages.length ? 'ok' : 'empty', as_of: new Date().toISOString() }));
+  } catch (e) {
+    console.error('[/api/assistant/chat]', e);
+    res.write(sseFrame('error', { message: 'Could not reach Lakelink Fiber Splice' }));
+  } finally { clearInterval(ping); clearTimeout(timer); res.end(); }
 });
 
 app.use('/api', (_req, res) => res.status(404).json({ data: null, as_of: null, source_table: '', status: 'error', message: 'Unknown route' }));

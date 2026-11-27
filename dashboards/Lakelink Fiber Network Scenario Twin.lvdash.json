@@ -29,6 +29,16 @@
         "GROUP BY ALL\n",
         "ORDER BY sla_exposure_mrr DESC NULLS LAST, resource_id"
       ]
+    },
+    {
+      "name": "value_readout",
+      "displayName": "Value readout (v_value_readout)",
+      "queryLines": [
+        "SELECT scenario, scenario_order, row_type, lever_order, lever, input_description,\n",
+        "  input_annual_usd, factor, annual_value_usd, annual_value_musd, share_of_scenario_pct,\n",
+        "  assumption_status, origin\n",
+        "FROM cdm_tmforum.network_scenario_twin.v_value_readout"
+      ]
     }
   ],
   "pages": [
@@ -870,6 +880,436 @@
             "x": 0,
             "y": 24,
             "width": 12,
+            "height": 7
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "value_readout_page",
+      "displayName": "Value readout",
+      "layout": [
+        {
+          "widget": {
+            "name": "value_header_text",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Lakelink Fiber value readout (model estimate)\n",
+                "\n",
+                "Annual value of the Network Scenario Twin under Low, Base and High scenarios. Each lever = annual input x tunable factor from `value_model_assumptions`; totals are the sum of the three levers. **Model estimate, not recognized savings. All assumptions are to be validated with the customer.** Units: USD per year."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_value_low",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "value_readout",
+                  "fields": [
+                    {
+                      "name": "low_total",
+                      "expression": "SUM(`annual_value_usd`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`row_type` IN ('total')"
+                    },
+                    {
+                      "expression": "`scenario` IN ('Low')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": {
+                "title": "Low scenario, annual value (Model estimate)",
+                "showTitle": true,
+                "description": "Sum of 3 levers; assumptions to validate",
+                "showDescription": true
+              },
+              "encodings": {
+                "value": {
+                  "fieldName": "low_total",
+                  "displayName": "Low (USD/yr)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_value_base",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "value_readout",
+                  "fields": [
+                    {
+                      "name": "base_total",
+                      "expression": "SUM(`annual_value_usd`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`row_type` IN ('total')"
+                    },
+                    {
+                      "expression": "`scenario` IN ('Base')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": {
+                "title": "Base case, annual value (Model estimate)",
+                "showTitle": true,
+                "description": "Sum of 3 levers; assumptions to validate",
+                "showDescription": true
+              },
+              "encodings": {
+                "value": {
+                  "fieldName": "base_total",
+                  "displayName": "Base (USD/yr)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_value_high",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "value_readout",
+                  "fields": [
+                    {
+                      "name": "high_total",
+                      "expression": "SUM(`annual_value_usd`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`row_type` IN ('total')"
+                    },
+                    {
+                      "expression": "`scenario` IN ('High')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": {
+                "title": "High scenario, annual value (Model estimate)",
+                "showTitle": true,
+                "description": "Sum of 3 levers; assumptions to validate",
+                "showDescription": true
+              },
+              "encodings": {
+                "value": {
+                  "fieldName": "high_total",
+                  "displayName": "High (USD/yr)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 2,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "value_levers_by_scenario",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "value_readout",
+                  "fields": [
+                    {
+                      "name": "scenario",
+                      "expression": "`scenario`"
+                    },
+                    {
+                      "name": "lever",
+                      "expression": "`lever`"
+                    },
+                    {
+                      "name": "value_usd",
+                      "expression": "SUM(`annual_value_usd`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`row_type` IN ('lever')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": {
+                "title": "Annual value by lever and scenario, USD/yr (Model estimate)",
+                "showTitle": true
+              },
+              "mark": {
+                "layout": "stack"
+              },
+              "encodings": {
+                "x": {
+                  "fieldName": "scenario",
+                  "displayName": "Scenario",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "measure",
+                      "measure": {
+                        "fieldName": "value_usd"
+                      }
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "value_usd",
+                  "displayName": "Annual value (USD/yr)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "lever",
+                  "displayName": "Lever",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Capex avoidance",
+                        "color": "#FF3621"
+                      },
+                      {
+                        "value": "Proactive operations savings",
+                        "color": "#1B3139"
+                      },
+                      {
+                        "value": "Copper proceeds protection",
+                        "color": "#00A972"
+                      }
+                    ]
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "value_assumptions_table",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "value_readout",
+                  "fields": [
+                    {
+                      "name": "scenario",
+                      "expression": "`scenario`"
+                    },
+                    {
+                      "name": "lever",
+                      "expression": "`lever`"
+                    },
+                    {
+                      "name": "input_description",
+                      "expression": "`input_description`"
+                    },
+                    {
+                      "name": "input_annual_usd",
+                      "expression": "`input_annual_usd`"
+                    },
+                    {
+                      "name": "factor",
+                      "expression": "`factor`"
+                    },
+                    {
+                      "name": "annual_value_musd",
+                      "expression": "`annual_value_musd`"
+                    },
+                    {
+                      "name": "share_of_scenario_pct",
+                      "expression": "`share_of_scenario_pct`"
+                    },
+                    {
+                      "name": "assumption_status",
+                      "expression": "`assumption_status`"
+                    },
+                    {
+                      "name": "origin",
+                      "expression": "`origin`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "frame": {
+                "title": "Value levers and assumptions (to validate with customer)",
+                "showTitle": true,
+                "description": "Value = input x factor; Total rows are the sum of the levers",
+                "showDescription": true
+              },
+              "rowsPerPage": 12,
+              "freezeUpToColumnNumber": 2,
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "scenario",
+                    "displayName": "Scenario"
+                  },
+                  {
+                    "fieldName": "lever",
+                    "displayName": "Lever"
+                  },
+                  {
+                    "fieldName": "input_description",
+                    "displayName": "Input"
+                  },
+                  {
+                    "fieldName": "input_annual_usd",
+                    "displayName": "Input (USD/yr)"
+                  },
+                  {
+                    "fieldName": "factor",
+                    "displayName": "Factor"
+                  },
+                  {
+                    "fieldName": "annual_value_musd",
+                    "displayName": "Annual value (M USD)"
+                  },
+                  {
+                    "fieldName": "share_of_scenario_pct",
+                    "displayName": "Share of scenario (%)"
+                  },
+                  {
+                    "fieldName": "assumption_status",
+                    "displayName": "Assumption status"
+                  },
+                  {
+                    "fieldName": "origin",
+                    "displayName": "Provenance"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 5,
+            "width": 6,
             "height": 7
           }
         }

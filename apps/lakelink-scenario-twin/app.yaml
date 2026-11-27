@@ -5,8 +5,11 @@ env:
   # Lakebase twin-state database resource (key: twin-state) injects PGHOST/PGDATABASE/PGUSER/PGPORT/PGSSLMODE.
   - name: TWIN_SCHEMA
     value: twin_app
-  # Lakelink Fiber Twin Copilot supervisor endpoint (app SP needs CAN_QUERY; granted by CEO, see P5-APP-COPILOT-QUERY-GRANT)
-  - name: COPILOT_ENDPOINT
+  # Lakelink Fiber Splice supervisor endpoint (D-013; app SP holds CAN_QUERY)
+  - name: ASSISTANT_ENDPOINT
     value: 'mas-4a251ff6-endpoint'
+  # Genie mode fallback: Genie space 'Lakelink Fiber Network Scenario Twin' (used only if the Splice endpoint fails)
+  - name: GENIE_SPACE_ID
+    value: '01f1e76a824b11f3819e54acb220681f'
   - name: STALE_HOURS
     value: '24'

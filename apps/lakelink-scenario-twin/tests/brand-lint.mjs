@@ -41,11 +41,11 @@ const mainSrc = readFileSync('client/main.tsx', 'utf8'); const css = readFileSyn
 const A11Y = [
   ['skip link', /className="skip-link" href="#main"/.test(mainSrc)],
   ['header/nav/main/aside landmarks', ['<header', '<nav', '<main id="main"', '<aside'].every((t) => mainSrc.includes(t))],
-  ['copilot toggle aria-label + aria-expanded', /ref=\{toggleRef\}[^>]*aria-label=[^>]*aria-expanded/.test(mainSrc)],
+  ['assistant toggle aria-label + aria-expanded', /ref=\{toggleRef\}[^>]*aria-label=[^>]*aria-expanded/.test(mainSrc)],
   ['icon tooltips (data-tip) on rail + toggle', (mainSrc.match(/data-tip=/g) || []).length >= 2 && /\.tip:focus-visible::after/.test(css)],
   ['Esc closes overlay + returns focus', /e\.key === 'Escape'[^\n]*opener\.current\?\.focus\(\)/.test(mainSrc)],
   ['focus trap on Tab at overlay widths', /e\.key !== 'Tab'/.test(mainSrc) && /max-width: 1023px/.test(mainSrc)],
-  ['copilot output aria-live=polite', /copilot-log" aria-live="polite"/.test(mainSrc)],
+  ['assistant output aria-live=polite', /assistant-log" aria-live="polite"/.test(mainSrc)],
   ['focus-visible 2px primary + 2px offset', /:focus-visible \{ outline: 2px solid var\(--lf-primary\); outline-offset: 2px; \}/.test(css)],
   ['white focus on navy topbar', /\.topbar :focus-visible \{ outline-color: var\(--lf-white\)/.test(css)],
   ['breakpoints 1279/1023/767', ['max-width: 1279px', 'max-width: 1023px', 'max-width: 767px'].every((b) => css.includes(b))],
@@ -54,5 +54,8 @@ const A11Y = [
   ['twin-as-of chip keeps text (no hidden ts)', !/\.chip \.ts \{ display: none/.test(css) && mainSrc.includes('Twin as of')],
 ];
 for (const [name, ok] of A11Y) if (!ok) { console.error(`a11y-lint: missing ${name}`); bad++; }
+// D-013 / CEO naming directive: the retired assistant word never appears in app source, UI copy or config (spelled indirectly here).
+const RETIRED = ['co', 'pilot'].join('');
+for (const f of [...files, 'app.yaml']) if (readFileSync(f, 'utf8').toLowerCase().includes(RETIRED)) { console.error(`naming-lint: retired assistant name in ${f} (use Lakelink Fiber Splice)`); bad++; }
 if (bad) process.exit(1);
 console.log(`brand-lint: OK (${files.length} files); a11y-lint: OK (${A11Y.length} checks)`);

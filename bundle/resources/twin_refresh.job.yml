@@ -1,6 +1,8 @@
 # Daily refresh job for the Lakelink Fiber Network Scenario Twin: runs a refresh of the twin
-# pipeline (bronze -> silver -> gold). Serverless (no cluster definition). The schedule ships
-# PAUSED; @pm unpauses it once the dev deploy is bound and verified.
+# pipeline (bronze -> silver -> gold). Serverless (no cluster definition). Unpaused by @devops
+# on 2026-11-27 under P5-REFRESH-JOB-UNPAUSE-EXEC after P6-E2E-VALIDATION passed (D-017).
+# Dev mode pauses schedules by default; the explicit pause_status: UNPAUSED below overrides that
+# for this one job (presets.trigger_pause_status: UNPAUSED is rejected in development mode).
 # Tag: telco_project: network_scenario_twin (set here and by presets.tags). Owner: @devops (P5-BUNDLE-RESOURCES).
 resources:
   jobs:
@@ -16,6 +18,6 @@ resources:
       schedule:
         quartz_cron_expression: '0 0 5 * * ?'
         timezone_id: America/Chicago
-        pause_status: PAUSED
+        pause_status: UNPAUSED
       tags:
         telco_project: network_scenario_twin

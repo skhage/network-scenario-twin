@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { Network, Gauge, Cable, LayoutDashboard, MessageSquare, Menu, X, ClockAlert, CircleDashed } from 'lucide-react';
 import { APP_NAME as APP, pageTitle, Provenance, Money, fmtTs, fmtDate, fmtDays } from './theme';
 import { useApi, StateBanner, BlastRadiusView, CorridorView, CopperView } from './views';
+import { parseSse } from '../server/lib';
 import './styles.css';
 
 const ROUTES = [
@@ -73,38 +74,60 @@ function OverviewView({ go }: { go: (p: string) => void }) {
   </>);
 }
 
-// P5-APP-COPILOT-ALL-MESSAGES: one bubble per assistant message, in endpoint order (the early read-only refusal
-// or Lakelink-Fiber-only notice comes before the final answer). Text is rendered as plain text (no HTML injection).
-interface ChatTurn { role: 'user' | 'assistant'; content: string }
-function CopilotChat() {
+// Lakelink Fiber Splice drawer (D-013). SSE from /api/assistant/chat: one bubble per assistant message in endpoint order
+// (the early read-only / Lakelink-Fiber-only notice comes first), citation chips per twin tool, "Genie mode" label on fallback.
+// Text is rendered as plain text (no HTML injection).
+interface Cite { tool: string; label: string; route: string | null }
+interface ChatTurn { role: 'user' | 'assistant'; content: string; cites?: Cite[] }
+const SAMPLE_PROMPTS = ['What is the blast radius if span S-4471 fails?', 'When does DEN-SLC reach exhaustion?', 'Which Iowa wire center should we retire first?'];
+function SpliceChat({ go }: { go: (p: string) => void }) {
   const [log, setLog] = useState<ChatTurn[]>([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const send = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const message = text.trim(); if (!message || busy) return;
-    const history = log.slice(-10);
+  const [mode, setMode] = useState<'splice' | 'genie'>('splice');
+  const ask = async (message: string) => {
+    if (!message || busy) return;
+    const history = log.slice(-10).map(({ role, content }) => ({ role, content }));
     setLog((l) => [...l, { role: 'user', content: message }]); setText(''); setBusy(true); setErr(null);
+    let got = 0;
     try {
-      const r = await fetch('/api/copilot/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, history }) });
-      const j = await r.json().catch(() => null) as { data: { messages: string[] } | null; message?: string } | null;
-      if (!r.ok || !j?.data) { setErr(j?.message || 'Could not reach the copilot'); return; }
-      const msgs = j.data.messages.length ? j.data.messages : ['The copilot returned no answer. Try rephrasing the question.'];
-      setLog((l) => [...l, ...msgs.map((m) => ({ role: 'assistant' as const, content: m }))]);
-    } catch { setErr('Could not reach the copilot'); }
+      const r = await fetch('/api/assistant/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' }, body: JSON.stringify({ message, history }) });
+      if (!r.ok || !r.body) { const j = await r.json().catch(() => null) as { message?: string } | null; setErr(j?.message || 'Could not reach Lakelink Fiber Splice'); return; }
+      const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = '';
+      for (;;) {
+        const { value, done } = await reader.read(); if (done) break;
+        const p = parseSse(buf + dec.decode(value, { stream: true })); buf = p.rest;
+        for (const ev of p.events) {
+          const d = ev.data as Record<string, unknown>;
+          if (ev.event === 'meta' && (d?.mode === 'genie' || d?.mode === 'splice')) setMode(d.mode);
+          else if (ev.event === 'message' && typeof d?.text === 'string') { got++; setLog((l) => [...l, { role: 'assistant', content: d.text as string }]); }
+          else if (ev.event === 'citations' && Array.isArray(ev.data) && ev.data.length) {
+            const cites = ev.data as Cite[];
+            setLog((l) => { const i = l.map((t) => t.role).lastIndexOf('assistant'); return i < 0 ? l : l.map((t, k) => (k === i ? { ...t, cites } : t)); });
+          } else if (ev.event === 'error') setErr(typeof d?.message === 'string' ? d.message : 'Could not reach Lakelink Fiber Splice');
+        }
+      }
+      if (!got) setLog((l) => [...l, { role: 'assistant', content: 'Lakelink Fiber Splice returned no answer. Try rephrasing the question.' }]);
+    } catch { setErr('Could not reach Lakelink Fiber Splice'); }
     finally { setBusy(false); }
   };
+  const send = (e: React.FormEvent) => { e.preventDefault(); ask(text.trim()); };
   return (<>
-    <div className="copilot-log" aria-live="polite" aria-atomic="false" aria-busy={busy}>
-      {log.length === 0 && <p className="secondary">Ask about blast radius, corridor exhaustion or copper sequencing. The copilot is read-only.</p>}
-      {log.map((t, i) => <div key={i} className={`copilot-msg ${t.role}`}><span className="sr-only">{t.role === 'user' ? 'You: ' : 'Copilot: '}</span>{t.content}</div>)}
-      {busy && <p className="secondary" role="status">Copilot is thinking</p>}
+    {mode === 'genie' && <p className="mode-label" role="status">Genie mode: answering from the Lakelink Fiber Network Scenario Twin Genie space</p>}
+    <div className="assistant-log" aria-live="polite" aria-atomic="false" aria-busy={busy}>
+      {log.length === 0 && <><p className="secondary">Ask about blast radius, corridor exhaustion or copper sequencing. Splice is read-only.</p>
+        <div className="prompt-list">{SAMPLE_PROMPTS.map((p) => <button key={p} type="button" className="btn-secondary prompt" onClick={() => ask(p)}>{p}</button>)}</div></>}
+      {log.map((t, i) => <div key={i} className={`assistant-msg ${t.role}`}><span className="sr-only">{t.role === 'user' ? 'You: ' : 'Splice: '}</span>{t.content}
+        {t.cites && t.cites.length > 0 && <ul className="cite-chips" aria-label="Sources">{t.cites.map((c) => <li key={c.tool}>{c.route
+          ? <a className="cite-chip" href={c.route} onClick={(e) => { e.preventDefault(); go(c.route as string); }}>{c.label}</a>
+          : <span className="cite-chip">{c.label}</span>}</li>)}</ul>}</div>)}
+      {busy && <p className="secondary" role="status">Splice is working on it</p>}
       {err && <div className="banner error" role="alert">{err}</div>}
     </div>
-    <form className="copilot-form" onSubmit={send}>
-      <label htmlFor="copilot-input" className="sr-only">Message the Lakelink Fiber Twin Copilot</label>
-      <textarea id="copilot-input" className="input" rows={2} maxLength={2000} value={text} onChange={(e) => setText(e.target.value)}
+    <form className="assistant-form" onSubmit={send}>
+      <label htmlFor="assistant-input" className="sr-only">Message Lakelink Fiber Splice</label>
+      <textarea id="assistant-input" className="input" rows={2} maxLength={2000} value={text} onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); (e.currentTarget.form as HTMLFormElement).requestSubmit(); } }} />
       <button type="submit" className="btn-primary" disabled={busy || !text.trim()}>Send</button>
     </form>
@@ -114,19 +137,19 @@ function CopilotChat() {
 function App() {
   const [path, go] = usePath();
   const [navOpen, setNavOpen] = useState(false);
-  const [copilot, setCopilot] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLButtonElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const overlay = useMedia(OVERLAY_MQ);
-  const closeCopilot = () => setCopilot(false);
+  const closeAssistant = () => setAssistantOpen(false);
   const health = useApi<{ pool: string }>('/api/health');
   const seg = path.split('/')[1] || '';
   const view = seg === 'blast-radius' ? 'Blast radius' : seg === 'corridors' ? 'Corridor exhaustion' : seg === 'copper' ? 'Copper sequencing' : 'Overview';
   const id = decodeURIComponent(path.split('/')[2] || '');
   useEffect(() => { document.title = pageTitle(view); }, [view]);
-  useOverlayFocus(copilot, drawerRef, toggleRef, closeCopilot, overlay);
+  useOverlayFocus(assistantOpen, drawerRef, toggleRef, closeAssistant, overlay);
   useOverlayFocus(navOpen && overlay, navRef, menuRef, () => setNavOpen(false), true);
   useEffect(() => { if (!overlay) setNavOpen(false); }, [overlay]);
   const nav = (p: string) => { go(p); setNavOpen(false); document.getElementById('main')?.focus(); };
@@ -137,7 +160,7 @@ function App() {
       <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); nav('/'); }}><span className="dot" aria-hidden="true" /><span className="wm-text">{APP}</span></a>
       <span className="spacer" />
       <span className="chip" role="status" title="Lakebase twin state sync time"><ClockAlert size={14} strokeWidth={1.5} aria-hidden="true" />Twin as of <span className="ts">{health.loading ? 'loading' : fmtTs(health.env?.as_of ?? null)}</span>{health.env?.status === 'stale' ? ' (stale)' : ''}</span>
-      <button ref={toggleRef} className="icon-btn tip" data-tip="Copilot" aria-label={copilot ? 'Close Lakelink Fiber Twin Copilot' : 'Open Lakelink Fiber Twin Copilot'} aria-expanded={copilot} aria-controls="copilot" onClick={() => setCopilot(!copilot)}><MessageSquare size={20} strokeWidth={1.5} aria-hidden="true" /></button>
+      <button ref={toggleRef} className="icon-btn tip" data-tip="Splice" aria-label={assistantOpen ? 'Close Lakelink Fiber Splice' : 'Open Lakelink Fiber Splice'} aria-expanded={assistantOpen} aria-controls="assistant" onClick={() => setAssistantOpen(!assistantOpen)}><MessageSquare size={20} strokeWidth={1.5} aria-hidden="true" /></button>
     </header>
     <div className="layout">
       <nav id="sidenav" ref={navRef} className={`sidenav${navOpen ? ' open' : ''}`} aria-label="Primary">
@@ -151,10 +174,10 @@ function App() {
           : view === 'Copper sequencing' ? <CopperView key={id} id={id} go={go} />
           : <OverviewView go={nav} />}
       </main>
-      {copilot && <aside id="copilot" ref={drawerRef} className="drawer" aria-labelledby="copilot-title" {...(overlay ? { role: 'dialog', 'aria-modal': true } : {})}>
-        <h2 id="copilot-title">Lakelink Fiber Twin Copilot</h2>
-        <CopilotChat />
-        <button className="btn-secondary" onClick={() => { setCopilot(false); toggleRef.current?.focus(); }}>Close</button>
+      {assistantOpen && <aside id="assistant" ref={drawerRef} className="drawer" aria-labelledby="assistant-title" {...(overlay ? { role: 'dialog', 'aria-modal': true } : {})}>
+        <h2 id="assistant-title">Lakelink Fiber Splice</h2>
+        <SpliceChat go={nav} />
+        <button className="btn-secondary" onClick={() => { setAssistantOpen(false); toggleRef.current?.focus(); }}>Close</button>
       </aside>}
       {navOpen && overlay && <div className="scrim" aria-hidden="true" onClick={() => { setNavOpen(false); menuRef.current?.focus(); }} />}
     </div>
