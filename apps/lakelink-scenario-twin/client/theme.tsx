@@ -67,11 +67,13 @@ export function Provenance({ kind }: { kind: ProvenanceKind }) {
  */
 export interface Column<R> { key: keyof R & string; header: string; format?: (v: R[keyof R], row: R) => React.ReactNode }
 export function ChartFrame<R extends Record<string, unknown>>({ title, provenance, summary, rows, columns, children }:
-  { title: string; provenance: ProvenanceKind; summary: string; rows: R[]; columns: Column<R>[]; children: React.ReactNode }) {
+  { title: string; provenance: ProvenanceKind | ProvenanceKind[]; summary: string; rows: R[]; columns: Column<R>[]; children: React.ReactNode }) {
   const [asTable, setAsTable] = useState(false);
   const id = useId();
+  // P5-APP-WOW-CHART-RULES V8 (s1 W1): a chart that plots observed + forecast series shows both provenance badges.
+  const kinds = Array.isArray(provenance) ? provenance : [provenance];
   return (<section className="card chart-card" aria-labelledby={`${id}-t`}>
-    <div className="chart-head"><h3 id={`${id}-t`}>{title}</h3><Provenance kind={provenance} />
+    <div className="chart-head"><h3 id={`${id}-t`}>{title}</h3>{kinds.map((k) => <Provenance key={k} kind={k} />)}
       <span className="spacer" />
       <button type="button" className="btn-secondary" aria-pressed={asTable} onClick={() => setAsTable(!asTable)}>{asTable ? 'View as chart' : 'View as table'}</button></div>
     <p className="chart-summary">{summary}</p>

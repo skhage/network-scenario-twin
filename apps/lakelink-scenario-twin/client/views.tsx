@@ -250,8 +250,10 @@ function useWidth<T extends HTMLElement>(fallback: number): [React.RefObject<T>,
 
 function CorridorChart({ act, fc }: { act: Act[]; fc: Fc[] }) {
   const [box, W] = useWidth<HTMLDivElement>(800);
-  const H = 320, P = { l: 48, r: 16, t: 24, b: 32 };
-  const narrow = W < 600; const tickStep = narrow ? 3 : 2;
+  // P5-APP-WOW-CHART-RULES V7 + P5-APP-CHART-LABEL-FIT: room for axis titles (left/bottom) and a right pad of half the widest tick.
+  const H = 340, P = { l: 64, r: 32, t: 24, b: 52 };
+  const xs_ = W < 480, narrow = W < 600; const tickStep = xs_ ? 6 : narrow ? 4 : 2;
+  const tickText = (ms: number) => narrow ? shortMonth(ms) : monthLabel(ms);
   const xs = [...act.map((a) => utc(a.util_date)), ...fc.map((f) => utc(f.month))];
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
   const thr = fc[0]?.threshold_pct ?? CORRIDOR_CHART.threshold.value;
@@ -268,23 +270,51 @@ function CorridorChart({ act, fc }: { act: Act[]; fc: Fc[] }) {
   const yTicks: number[] = []; for (let v = y0; v <= y1; v += 10) yTicks.push(v);
   const xTicks: number[] = []; const t = new Date(x0); t.setUTCDate(1); t.setUTCMonth(t.getUTCMonth() + 1);
   for (; t.getTime() <= x1; t.setUTCMonth(t.getUTCMonth() + tickStep)) xTicks.push(t.getTime());
+  // LABEL-FIT (1)+(3): anchor each tick so its box stays inside [0, W]; drop any tick that would overlap the previous one.
+  const ticks: { ms: number; x: number; anchor: 'start' | 'middle' | 'end'; label: string }[] = [];
+  let prevRight = -Infinity;
+  for (const ms of xTicks) {
+    const label = tickText(ms), w = textW(label, 12), x = X(ms);
+    const anchor = x + w / 2 > W - 2 ? 'end' : x - w / 2 < 2 ? 'start' : 'middle';
+    const left = anchor === 'end' ? x - w : anchor === 'start' ? x : x - w / 2;
+    if (left < prevRight + 8) continue;
+    ticks.push({ ms, x, anchor, label }); prevRight = left + w;
+  }
   const pb = fc[0]?.prebuild_trigger_date; const pbIn = pb && utc(pb) >= x0 && utc(pb) <= x1;
-  // keep the pre-build label inside the plot: flip it to the left of the line in the right half
-  const pbFlip = pbIn ? X(utc(pb!)) > W / 2 : false;
+  // LABEL-FIT (2): clamp the pre-build label inside [P.l, W-P.r]; if it cannot fit the plot (below 480px), it moves to the legend.
+  const pbLabel = pb ? `Pre-build trigger ${fmtDate(pb)}` : ''; const pbW = textW(pbLabel, 14, 500);
+  const pbFits = pbIn && pbW <= W - P.l - P.r;
+  const pbX = pbIn ? X(utc(pb!)) : 0; const pbFlip = pbX > W / 2;
+  const pbTx = pbFlip ? Math.max(P.l + pbW, pbX - 6) : Math.min(W - P.r - pbW, pbX + 6);
+  // V7 direct end labels (more than hue): 'Observed' at last actual point (navy), 'Forecast (P50)' at last forecast point (#C8250F text, s2.4).
+  const lastFc = fc[fc.length - 1];
+  const obsLbl = CORRIDOR_CHART.observed.label, fcLbl = CORRIDOR_CHART.forecastP50.label;
+  const obsX = last ? Math.max(P.l + textW(obsLbl, 14, 500), X(utc(last.util_date)) - 6) : 0, obsY = last ? Math.max(P.t + 14, Y(last.util_mean_pct) - 10) : 0;
+  const fcX = W - P.r, fcYRaw = lastFc ? Y(lastFc.p50) - 10 : 0;
+  // keep the forecast end label and the threshold label from colliding: move the threshold label under its line when close.
+  const thrBelow = lastFc ? Math.abs(fcYRaw - (Y(thr) - 6)) < 18 : false;
+  const fcY = Math.max(P.t + 14, fcYRaw);
   const C = CORRIDOR_CHART;
   return (<div ref={box} className="chart-box"><svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="chart-svg" aria-hidden="true" focusable="false">
     {yTicks.map((v) => <g key={v}><line x1={P.l} x2={W - P.r} y1={Y(v)} y2={Y(v)} stroke={C.grid} strokeWidth={1} /><text x={P.l - 8} y={Y(v) + 4} textAnchor="end">{v}%</text></g>)}
-    {xTicks.map((ms) => <text key={ms} x={X(ms)} y={H - 8} textAnchor="middle">{monthLabel(ms)}</text>)}
+    {ticks.map((k) => <text key={k.ms} x={k.x} y={H - P.b + 18} textAnchor={k.anchor}>{k.label}</text>)}
+    <text className="chart-axis-title" x={P.l + (W - P.l - P.r) / 2} y={H - 8} textAnchor="middle">Month</text>
+    <text className="chart-axis-title" x={16} y={P.t + (H - P.t - P.b) / 2} textAnchor="middle" transform={`rotate(-90 16 ${P.t + (H - P.t - P.b) / 2})`}>Utilization (%)</text>
     {band && <path d={band} fill={C.bandP10P90.fill} fillOpacity={C.bandP10P90.fillOpacity} />}
     <path d={obs} fill="none" stroke={C.observed.stroke} strokeWidth={C.observed.strokeWidth} />
     <path d={p50} fill="none" stroke={C.forecastP50.stroke} strokeWidth={C.forecastP50.strokeWidth} strokeDasharray={C.forecastP50.dash} />
     <line x1={P.l} x2={W - P.r} y1={Y(thr)} y2={Y(thr)} stroke={C.threshold.stroke} strokeWidth={C.threshold.strokeWidth} strokeDasharray={C.threshold.dash} />
-    <text className="chart-key-label" x={W - P.r} y={Y(thr) - 6} textAnchor="end">{`${thr}% exhaustion threshold`}</text>
-    {pbIn && <g><line x1={X(utc(pb!))} x2={X(utc(pb!))} y1={P.t} y2={H - P.b} stroke={C.prebuild.stroke} strokeWidth={C.prebuild.strokeWidth} strokeDasharray={C.prebuild.dash} />
-      <text className="chart-key-label" x={X(utc(pb!)) + (pbFlip ? -6 : 6)} y={P.t + 4} textAnchor={pbFlip ? 'end' : 'start'}>{`Pre-build trigger ${fmtDate(pb!)}`}</text></g>}
+    <text className="chart-key-label" x={W - P.r} y={thrBelow ? Y(thr) + 18 : Y(thr) - 6} textAnchor="end">{xs_ ? `${thr}% threshold` : `${thr}% exhaustion threshold`}</text>
+    {pbIn && <g><line x1={pbX} x2={pbX} y1={P.t} y2={H - P.b} stroke={C.prebuild.stroke} strokeWidth={C.prebuild.strokeWidth} strokeDasharray={C.prebuild.dash} />
+      {pbFits && <text className="chart-key-label" x={pbTx} y={P.t + 4} textAnchor={pbFlip ? 'end' : 'start'}>{pbLabel}</text>}</g>}
+    {last && <text className="chart-key-label" x={obsX} y={obsY} textAnchor="end">{obsLbl}</text>}
+    {lastFc && <text className="chart-key-label chart-end-forecast" x={fcX} y={fcY} textAnchor="end">{fcLbl}</text>}
   </svg></div>);
 }
-function Legend() {
+// Text width estimate for Inter (avg advance ~0.56em regular, ~0.6em medium); used only for clamping/overlap tests.
+const textW = (s: string, px: number, weight = 400) => s.length * px * (weight >= 500 ? 0.6 : 0.56);
+const shortMonth = (ms: number) => new Date(ms).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' }); // 'Sep 26' (LABEL-FIT s4.2)
+function Legend({ prebuild }: { prebuild?: string | null }) {
   const C = CORRIDOR_CHART;
   const sw = (stroke: string, dash?: string) => <svg width="24" height="8" aria-hidden="true"><line x1="0" x2="24" y1="4" y2="4" stroke={stroke} strokeWidth={2} strokeDasharray={dash} /></svg>;
   return (<ul className="legend" aria-label="Chart legend">
@@ -292,7 +322,7 @@ function Legend() {
     <li>{sw(C.forecastP50.stroke, C.forecastP50.dash)}{C.forecastP50.label}</li>
     <li><svg width="24" height="12" aria-hidden="true"><rect width="24" height="12" fill={C.bandP10P90.fill} fillOpacity={C.bandP10P90.fillOpacity} /></svg>{C.bandP10P90.label}</li>
     <li>{sw(C.threshold.stroke, C.threshold.dash)}{C.threshold.label}</li>
-    <li>{sw(C.prebuild.stroke, C.prebuild.dash)}Pre-build trigger</li>
+    <li>{sw(C.prebuild.stroke, C.prebuild.dash)}{prebuild ? `Pre-build trigger (${fmtDate(prebuild)})` : 'Pre-build trigger'}</li>
   </ul>);
 }
 
@@ -302,13 +332,21 @@ export function CorridorView({ id, go }: { id: string; go: (p: string) => void }
   const a = useApi<Act[]>(`/api/corridors/${encodeURIComponent(cid)}/actuals`);
   const l = useApi<Cor[]>('/api/corridors?exhausting_within_days=180');
   const fc = f.env?.data ?? []; const act = a.env?.data ?? []; const h = fc[0]; const list = l.env?.data ?? [];
-  const passed = h?.prebuild_trigger_date ? daysUntil(h.prebuild_trigger_date) < 0 : false;
+  const pbDays = h?.prebuild_trigger_date ? daysUntil(h.prebuild_trigger_date) : null;
+  const passed = pbDays != null && pbDays < 0; const overdue = passed ? -pbDays! : 0;
+  // V9 / s8.9: days for the P10-P90 exhaustion range, derived from the data (offset of each bound from the P50 date).
+  const dayDiff = (a: string, b: string) => Math.round((utc(a.slice(0, 10)) - utc(b.slice(0, 10))) / 86_400_000);
+  const rangeDays = h?.days_to_exhaustion != null && h.exhaustion_date && h.exhaustion_date_p10 && h.exhaustion_date_p90
+    ? [h.exhaustion_date_p10, h.exhaustion_date_p90].map((d) => h.days_to_exhaustion! + dayDiff(d, h.exhaustion_date!)).sort((x, y) => x - y) : null;
   const first = act[0], last = act[act.length - 1];
   // Designer V6: never print 'Invalid Date' when a P10/P90 bound is missing.
   const range = h?.exhaustion_date_p10 && h?.exhaustion_date_p90 ? `${fmtDate(h.exhaustion_date_p10)} to ${fmtDate(h.exhaustion_date_p90)}` : null;
   const summary = h && first && last
     ? `${cid} observed mean utilization ${last.util_mean_pct >= first.util_mean_pct ? 'rose' : 'fell'} from ${fmtPct(first.util_mean_pct)} to ${fmtPct(last.util_mean_pct)} over the last 90 days. `
-      + (h.exhaustion_date ? `The P50 forecast crosses the ${h.threshold_pct}% exhaustion threshold on ${fmtDate(h.exhaustion_date)} (${range ? `P10-P90 ${range}` : 'P10-P90 range not available'}).` : 'The forecast does not cross the exhaustion threshold in the next 12 months.')
+      + (h.exhaustion_date
+        ? `${cid} reaches ${h.threshold_pct}% on ${fmtDate(h.exhaustion_date)}${h.days_to_exhaustion != null ? `, in ${fmtDays(h.days_to_exhaustion)}` : ''} (${rangeDays ? `P10-P90: ${rangeDays[0]} to ${rangeDays[1]} days` : 'P10-P90 range not available'}).`
+        : 'The forecast does not cross the exhaustion threshold in the next 12 months.')
+      + (passed ? ` Build start overdue by ${fmtDays(overdue)}: the pre-build trigger was ${fmtDate(h.prebuild_trigger_date!)}.` : '')
     : '';
   const rows: ChartRow[] = [
     ...act.map((x) => ({ date: fmtDate(x.util_date), series: 'Observed', p50: fmtPct(x.util_mean_pct), p10: '', p90: '' })),
@@ -323,19 +361,21 @@ export function CorridorView({ id, go }: { id: string; go: (p: string) => void }
       <section className="card" aria-labelledby="cd-h">
         <div className="chart-head"><h2 id="cd-h">Days to exhaustion (P50)</h2><Provenance kind="Forecast" /></div>
         {/* W4: Display 40/700 is the only size allowed for #FF3621 text; static value, no ticking animation. */}
-        <div className="headline">{h.days_to_exhaustion != null ? fmtDays(h.days_to_exhaustion) : 'Not within 12 months'}</div>
+        <div className="hero-row"><div className="headline">{h.days_to_exhaustion != null ? fmtDays(h.days_to_exhaustion) : 'Not within 12 months'}</div>
+          {/* V9: lead with the consequence; icon + text + fill, never color alone (s3). */}
+          {passed && <StatusBadge kind="degraded" label={`Build start overdue by ${fmtDays(overdue)}`} />}</div>
         {h.exhaustion_date && <dl className="facts">
           <div><dt>Exhaustion date (P50)</dt><dd>{fmtDate(h.exhaustion_date)}</dd></div>
           <div><dt>P10-P90 range</dt><dd>{range ?? 'Range not available'}</dd></div>
-          <div><dt>Pre-build trigger</dt><dd>{h.prebuild_trigger_date ? `${fmtDate(h.prebuild_trigger_date)}${passed ? ' (already passed)' : ''}` : 'Not available'}</dd></div>
+          <div><dt>Pre-build trigger</dt><dd>{h.prebuild_trigger_date ? fmtDate(h.prebuild_trigger_date) : 'Not available'}</dd></div>
         </dl>}
         <p className="secondary">The pre-build trigger is the exhaustion date minus the 180-day build lead time.</p>
       </section>
       <div className="corridor-grid">
         <div>
           <StateBanner {...a} route="/api/corridors/actuals" what="corridor utilization" skeleton={<SkChart />} />
-          {ready(a) && <ChartFrame title={`${cid} utilization: 90 days observed, 12 months forecast`} provenance="Forecast" summary={summary} rows={rows} columns={cols}>
-            <CorridorChart act={act} fc={fc} /><Legend />
+          {ready(a) && <ChartFrame title={`${cid} utilization: 90 days observed, 12 months forecast`} provenance={['Observed', 'Forecast']} summary={summary} rows={rows} columns={cols}>
+            <CorridorChart act={act} fc={fc} /><Legend prebuild={h.prebuild_trigger_date} />
           </ChartFrame>}
         </div>
         <section className="card" aria-labelledby="cl-h">

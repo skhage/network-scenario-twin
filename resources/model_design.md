@@ -10,7 +10,7 @@
 | Acceptance | project_plan.md section 11.5, queries 1 and 2 (D-005) |
 | MLflow experiment | `/Users/stephen.hage@databricks.com/network-scenario-twin/experiments/nst_models` |
 
-This document covers the four ML deliverables (corridor forecast, blast radius, telemetry anomaly detection, twin copilot), the features they need, how they are evaluated, and the champion/challenger plan. Company name is always Lakelink Fiber. The twin is the intelligence layer above the inventory system of record (D-003); every output here is a simulation or forecast, never an inventory record.
+This document covers the four ML deliverables (corridor forecast, blast radius, telemetry anomaly detection, the Lakelink Fiber Splice twin assistant), the features they need, how they are evaluated, and the champion/challenger plan. Company name is always Lakelink Fiber. The twin is the intelligence layer above the inventory system of record (D-003); every output here is a simulation or forecast, never an inventory record.
 
 ---
 
@@ -25,9 +25,9 @@ Checked in `cdm_tmforum` on 2026-11-17 before designing anything new.
 | `provable_resilience_intelligence.service_path` and its BFS/edge-disjoint path notebook (ID 2698138752964459) | Working/protect path traversal pattern for the blast-radius graph | PRI span IDs and topology. Different network. |
 | `provable_resilience_intelligence.derived_srlg_*` | SRLG derivation logic, used only as a cross-check | Derived SRLGs. Twin SRLGs come from `physical_resource.srlg`. |
 | `provable_resilience_intelligence.optical_anomaly_detector` (StandardScaler + IsolationForest, champion v2) | Pipeline shape for the anomaly challenger | Trained weights. It was trained on OSNR/BER; twin telemetry has utilization/latency/optical_margin_db. |
-| `provable_resilience_intelligence.reroute_recommender`, `fiber_capital_intelligence.scenario_build_queue` (UC functions) | Signature and comment conventions for copilot tools | Logic |
+| `provable_resilience_intelligence.reroute_recommender`, `fiber_capital_intelligence.scenario_build_queue` (UC functions) | Signature and comment conventions for Splice tools | Logic |
 
-Net new: three UC models, three UC functions, one feature table, one anomaly output table, and one copilot. No new app (D-004).
+Net new: three UC models, three UC functions, one feature table, one anomaly output table, and one twin assistant (Lakelink Fiber Splice). No new app (D-004).
 
 ---
 
@@ -214,9 +214,9 @@ All three are SQL table functions in `cdm_tmforum.network_scenario_twin`. Each i
 
 ---
 
-## 8. Twin copilot (P5-TWIN-COPILOT)
+## 8. Twin assistant: Lakelink Fiber Splice (task code P5-TWIN-COPILOT, frozen)
 
-* **Build:** an Agent Bricks Supervisor Agent named "Lakelink Fiber Twin Copilot". Its tools are the Genie space "Lakelink Fiber Network Scenario Twin" (P4-GENIE-SPACE) and the 3 UC functions. Instructions require it to cite the twin table or function behind every number, to say "simulated" or "forecast" when describing sim outputs, and to always use the name Lakelink Fiber.
+* **Build:** an Agent Bricks Supervisor Agent named "Lakelink Fiber Splice" (renamed per D-013; display name only, the endpoint is unchanged). Its tools are the Genie space "Lakelink Fiber Network Scenario Twin" (P4-GENIE-SPACE) and the 3 UC functions. Instructions require it to cite the twin table or function behind every number, to say "simulated" or "forecast" when describing sim outputs, and to always use the name Lakelink Fiber.
 * **Guardrails:** handled by @devops in P5-AI-GATEWAY (usage logging, PII, safety).
 * **Evaluation (`mlflow.genai.evaluate`):** a dataset of 8 Genie sample questions + 3 acceptance questions + 3 change-request rows (delete span, update span capacity, schedule a maintenance window) + 3 adversarial rows (a real-carrier name prompt, an out-of-scope poem request, an ambiguous resource ID S-44), 17 rows in total. Answers are generated once and judged 3x; the per-row majority is the score.
 * **Judge scope (D-012, P5-COPILOT-JUDGE-SCOPE-APPLY):** `read_only_positioning` is scored only on change-request rows (n=3). `RelevanceToQuery` is scored only on in-scope analytics rows (Genie + acceptance, n=11). The new `appropriate_decline_or_clarify` judge is scored on change-request + adversarial rows (n=6). Correctness, cites, brand, and safety are scored on all 17 rows. Each run logs scoped means (`<scorer>/scoped_majority_mean`, the gate) and unscoped means (`<scorer>/unscoped_majority_mean`, diagnostic only).
@@ -236,7 +236,7 @@ All three are SQL table functions in `cdm_tmforum.network_scenario_twin`. Each i
 
 P2-SDP-GOLD -> P3-FEATURES -> P3-FORECAST-MODEL. In parallel, P2-SDP-GOLD -> P3-BLAST-RADIUS. Both feed P3-MODEL-REGISTRY -> P5-UC-TOOLS. P5-UC-TOOLS and P4-GENIE-SPACE feed P5-TWIN-COPILOT. P3-ANOMALY-DETECT and P3-SLICE-TESTING run off the critical path.
 
-Notebook budget (2-for-1 consolidation rule): no more than 3 notebooks under `src/ml/`: `nst_forecast` (features, forecast, and registration), `nst_blast_radius` (graph, sims, and registration), and `nst_copilot` (UC tools, agent, and eval). Anomaly detection lives inside `nst_forecast` as a section.
+Notebook budget (2-for-1 consolidation rule): no more than 3 notebooks under `src/ml/`: `nst_forecast` (features, forecast, and registration), `nst_blast_radius` (graph, sims, and registration), and `nst_splice` (UC tools, agent, and eval; renamed in place from the original assistant notebook under P5-RENAME-ASSISTANT-ML, so the D-009 slot carries over). Task codes that contain the old assistant name are frozen identifiers and are not renamed. Anomaly detection lives inside `nst_forecast` as a section.
 
 ## 10. Open items
 1. Acceptance query 1 row shape (section 3.5). Owner: @data-planner in P0-DATA-CONTRACTS.
